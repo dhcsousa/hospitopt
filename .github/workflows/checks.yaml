@@ -17,11 +17,10 @@ jobs:
         with:
           python-version-file: '.python-version'
 
-      - name: Install system dependencies (tesseract)
+      - name: Install system dependencies (glpk)
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng libtesseract-dev
-          tesseract --version
+          sudo apt-get install -y --no-install-recommends glpk-utils libglpk-dev glpk-doc
 
       - name: Install uv
         uses: astral-sh/setup-uv@v6

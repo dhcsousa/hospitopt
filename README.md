@@ -18,3 +18,5 @@ This command will create a virtual environment and install all the required depe
 ## Optimization Idea
 
 The core idea behind the optimization in this project is to use constraint programming to allocate medical resources efficiently. By modeling the various constraints and requirements of hospitals, patients, and ambulances, the system can determine the best way to distribute resources to maximize the number of lives saved. This involves considering factors such as hospital capacities, patient needs, ambulance locations, and disease characteristics (which map to maximum time to be in hospital) to make informed decisions about resource allocation. If a mass casualty event occurs, the system can quickly adapt and re-optimize the allocation of resources to respond effectively to the new situation, it will always ensure that the maximum number of patients receive the care they need in a timely manner. It will also flag if there is the need to launch an aerial evacuation to save more lives.
+
+To sucessfully use Pyomo first install GLPK or set up another MILP solver.
