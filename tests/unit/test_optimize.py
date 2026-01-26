@@ -1,6 +1,6 @@
 import pytest
 
-from core.models import Ambulance, Hospital, MinutesTables, Patient
+from core.domain.models import Ambulance, Hospital, MinutesTables, Patient
 from worker import optimize
 
 

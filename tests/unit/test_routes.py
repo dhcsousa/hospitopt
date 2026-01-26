@@ -1,6 +1,8 @@
+from datetime import timedelta
+
 import pytest
 
-from core.models import Ambulance, Hospital, Patient
+from core.domain.models import Ambulance, Hospital, Patient
 from worker import routes
 
 
@@ -10,7 +12,7 @@ class _Status:
 
 
 class _Element:
-    def __init__(self, origin_index: int, destination_index: int, duration: int, status_code: int = 0) -> None:
+    def __init__(self, origin_index: int, destination_index: int, duration: timedelta, status_code: int = 0) -> None:
         self.origin_index = origin_index
         self.destination_index = destination_index
         self.duration = duration
@@ -35,9 +37,9 @@ class _DummyClient:
 @pytest.mark.asyncio
 async def test_compute_route_matrix_minutes_filters_invalid():
     elements = [
-        _Element(0, 0, duration=12, status_code=0),
-        _Element(0, 1, duration=20, status_code=3),
-        _Element(1, 0, duration=15, status_code=0),
+        _Element(0, 0, duration=timedelta(minutes=12), status_code=0),
+        _Element(0, 1, duration=timedelta(minutes=20), status_code=3),
+        _Element(1, 0, duration=timedelta(minutes=15), status_code=0),
     ]
     client = _DummyClient(elements)
 

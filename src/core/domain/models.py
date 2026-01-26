@@ -1,6 +1,7 @@
-"""Pydantic data models for the hospitopt domain."""
+"""Data models for the hospitopt domain."""
 
 from typing import Annotated, NewType
+from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt, model_validator
@@ -73,6 +74,7 @@ class PatientAssignment(BaseModel):
     ambulance_id: UUID | None = None
     travel_time_minutes: PositiveInt | None = None
     requires_urgent_transport: bool = False
+    optimized_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class OptimizationResult(BaseModel):

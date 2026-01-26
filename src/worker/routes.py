@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from google.maps import routing_v2
 from google.type import latlng_pb2
 
-from core.models import (
+from core.domain.models import (
     Ambulance,
     AmbulanceIndex,
     Hospital,
@@ -71,7 +71,7 @@ async def _compute_route_matrix_minutes(
             RouteMatrixEntry(
                 origin_index=element.origin_index,
                 destination_index=element.destination_index,
-                duration_minutes=element.duration,
+                duration_minutes=round(element.duration.total_seconds() / 60),
             )
         )
     return entries

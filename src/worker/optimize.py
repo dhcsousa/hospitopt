@@ -3,8 +3,11 @@
 from typing import Iterable
 from uuid import UUID
 
+import pyomo.environ as pyo
+from google.maps import routing_v2
 from pydantic import PositiveFloat
-from core.models import (
+
+from core.domain.models import (
     Ambulance,
     AmbulanceIndex,
     Hospital,
@@ -16,10 +19,6 @@ from core.models import (
     PatientIndex,
 )
 from worker.routes import build_minutes_tables
-
-from google.maps import routing_v2
-
-import pyomo.environ as pyo
 
 
 async def optimize_allocation(
@@ -68,7 +67,7 @@ async def optimize_allocation(
                 if ap is None or ph is None:
                     continue
                 raw_travel_minutes = ap + ph
-                travel_minutes = raw_travel_minutes / speed_factor
+                travel_minutes = round(raw_travel_minutes / speed_factor)
                 if travel_minutes <= patient.time_to_hospital_minutes:
                     slack = patient.time_to_hospital_minutes - travel_minutes
                     if slack <= 0:
