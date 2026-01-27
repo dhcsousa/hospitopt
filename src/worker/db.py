@@ -31,7 +31,10 @@ class DatabaseWriter:
                 patient_id=assignment.patient_id,
                 hospital_id=assignment.hospital_id,
                 ambulance_id=assignment.ambulance_id,
-                travel_time_minutes=assignment.travel_time_minutes,
+                estimated_travel_minutes=assignment.estimated_travel_minutes,
+                deadline_slack_minutes=assignment.deadline_slack_minutes,
+                treatment_deadline_minutes=assignment.treatment_deadline_minutes,
+                patient_registered_at=assignment.patient_registered_at,
                 requires_urgent_transport=assignment.requires_urgent_transport,
                 optimized_at=now,
             )

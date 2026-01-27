@@ -20,7 +20,7 @@ class EnvParser:
         if load_env:
             load_dotenv()
 
-        self._pattern = re.compile(r"env\(\s*(\w+)\s*\)")
+        self._pattern = re.compile(r"ENV\(\s*[\"']?([A-Za-z_][A-Za-z0-9_.-]*)[\"']?\s*\)")
 
     def __call__(self, value: Any) -> Any:
         if not isinstance(value, str):

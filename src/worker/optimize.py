@@ -82,6 +82,9 @@ async def optimize_allocation(
         urgent_assignments = [
             PatientAssignment(
                 patient_id=patient.id,
+                deadline_slack_minutes=patient.time_to_hospital_minutes,
+                treatment_deadline_minutes=patient.time_to_hospital_minutes,
+                patient_registered_at=patient.registered_at,
                 requires_urgent_transport=True,
             )
             for patient in patient_list
@@ -104,6 +107,8 @@ async def optimize_allocation(
 
     def patient_limit(m: pyo.ConcreteModel, p_index: int) -> pyo.Constraint:
         """Each patient can be assigned at most once."""
+        if not any(key[0] == p_index for key in m.F):
+            return pyo.Constraint.Feasible  # When no feasible assignments exist for this patient
         return sum(m.assign[key] for key in m.F if key[0] == p_index) <= 1
 
     model.patient_limit = pyo.Constraint(model.P, rule=patient_limit)
@@ -111,12 +116,16 @@ async def optimize_allocation(
     def hospital_capacity(m: pyo.ConcreteModel, h_index: int) -> pyo.Constraint:
         """Hospital capacity cannot be exceeded."""
         available = max(0, hospital_list[h_index].bed_capacity - hospital_list[h_index].used_beds)
+        if not any(key[2] == h_index for key in m.F):
+            return pyo.Constraint.Feasible  # When no feasible assignments exist for this hospital
         return sum(m.assign[key] for key in m.F if key[2] == h_index) <= available
 
     model.hospital_capacity = pyo.Constraint(model.H, rule=hospital_capacity)
 
     def ambulance_limit(m: pyo.ConcreteModel, a_index: int) -> pyo.Constraint:
         """Each ambulance can be assigned at most once."""
+        if not any(key[1] == a_index for key in m.F):
+            return pyo.Constraint.Feasible  # When no feasible assignments exist for this ambulance
         return sum(m.assign[key] for key in m.F if key[1] == a_index) <= 1
 
     model.ambulance_limit = pyo.Constraint(model.A, rule=ambulance_limit)
@@ -145,7 +154,10 @@ async def optimize_allocation(
                 patient_id=patient.id,
                 hospital_id=hospital.id,
                 ambulance_id=ambulance.id if ambulance else None,
-                travel_time_minutes=feasible[key],
+                estimated_travel_minutes=feasible[key],
+                deadline_slack_minutes=patient.time_to_hospital_minutes - feasible[key],
+                treatment_deadline_minutes=patient.time_to_hospital_minutes,
+                patient_registered_at=patient.registered_at,
                 requires_urgent_transport=False,
             )
         )
@@ -156,6 +168,15 @@ async def optimize_allocation(
         assignments.extend(
             PatientAssignment(
                 patient_id=patient_id,
+                deadline_slack_minutes=next(
+                    patient.time_to_hospital_minutes for patient in patient_list if patient.id == patient_id
+                ),
+                treatment_deadline_minutes=next(
+                    patient.time_to_hospital_minutes for patient in patient_list if patient.id == patient_id
+                ),
+                patient_registered_at=next(
+                    patient.registered_at for patient in patient_list if patient.id == patient_id
+                ),
                 requires_urgent_transport=True,
             )
             for patient_id in unassigned

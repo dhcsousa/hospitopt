@@ -1,5 +1,6 @@
 """Google Routes API helpers for travel-time matrices."""
 
+import math
 from datetime import datetime, timedelta, timezone
 
 from google.maps import routing_v2
@@ -36,44 +37,62 @@ async def _compute_route_matrix_minutes(
     Returns:
         List of RouteMatrixEntry with duration minutes for each origin/destination pair.
     """
-    request = routing_v2.ComputeRouteMatrixRequest(
-        origins=[
-            routing_v2.RouteMatrixOrigin(
-                waypoint=routing_v2.Waypoint(
-                    location=routing_v2.Location(lat_lng=latlng_pb2.LatLng(latitude=lat, longitude=lon))
-                )
-            )
-            for (lat, lon) in origins
-        ],
-        destinations=[
-            routing_v2.RouteMatrixDestination(
-                waypoint=routing_v2.Waypoint(
-                    location=routing_v2.Location(lat_lng=latlng_pb2.LatLng(latitude=lat, longitude=lon))
-                )
-            )
-            for (lat, lon) in destinations
-        ],
-        travel_mode=travel_mode,
-        routing_preference=routing_v2.RoutingPreference(routing_preference),
-        departure_time=datetime.now(timezone.utc)
-        + timedelta(seconds=30),  # otherwise it complains that departure time is in the past.
-    )
     entries: list[RouteMatrixEntry] = []
-    stream = await client.compute_route_matrix(
-        request=request,
-        metadata=[("x-goog-fieldmask", "duration,distance_meters,origin_index,destination_index")],
-    )
-    async for element in stream:
-        if element.status and element.status.code != 0:
-            # Skip invalid pairs
-            continue
-        entries.append(
-            RouteMatrixEntry(
-                origin_index=element.origin_index,
-                destination_index=element.destination_index,
-                duration_minutes=round(element.duration.total_seconds() / 60),
+
+    # Google Routes limits to 100 elements when using TRAFFIC_AWARE_OPTIMAL.
+    # Batch requests while preserving global indices.
+    max_elements = 100
+    if routing_preference == routing_v2.RoutingPreference.TRAFFIC_AWARE_OPTIMAL:
+        max_elements = 100
+
+    def _chunk_coords(coords: list[tuple[float, float]], size: int) -> list[tuple[int, list[tuple[float, float]]]]:
+        return [(start, coords[start : start + size]) for start in range(0, len(coords), size)]
+
+    if not origins or not destinations:
+        return entries
+
+    max_origins = max(1, min(len(origins), max_elements))
+    max_destinations = max(1, max_elements // max_origins)
+
+    for origin_offset, origin_chunk in _chunk_coords(origins, max_origins):
+        for dest_offset, dest_chunk in _chunk_coords(destinations, max_destinations):
+            request = routing_v2.ComputeRouteMatrixRequest(
+                origins=[
+                    routing_v2.RouteMatrixOrigin(
+                        waypoint=routing_v2.Waypoint(
+                            location=routing_v2.Location(lat_lng=latlng_pb2.LatLng(latitude=lat, longitude=lon))
+                        )
+                    )
+                    for (lat, lon) in origin_chunk
+                ],
+                destinations=[
+                    routing_v2.RouteMatrixDestination(
+                        waypoint=routing_v2.Waypoint(
+                            location=routing_v2.Location(lat_lng=latlng_pb2.LatLng(latitude=lat, longitude=lon))
+                        )
+                    )
+                    for (lat, lon) in dest_chunk
+                ],
+                travel_mode=travel_mode,
+                routing_preference=routing_v2.RoutingPreference(routing_preference),
+                departure_time=datetime.now(timezone.utc)
+                + timedelta(seconds=30),  # otherwise it complains that departure time is in the past.
             )
-        )
+            stream = await client.compute_route_matrix(
+                request=request,
+                metadata=[("x-goog-fieldmask", "duration,distance_meters,origin_index,destination_index")],
+            )
+            async for element in stream:
+                if element.status and element.status.code != 0:
+                    # Skip invalid pairs
+                    continue
+                entries.append(
+                    RouteMatrixEntry(
+                        origin_index=origin_offset + element.origin_index,
+                        destination_index=dest_offset + element.destination_index,
+                        duration_minutes=max(1, int(math.ceil(element.duration.total_seconds() / 60))),
+                    )
+                )
     return entries
 
 

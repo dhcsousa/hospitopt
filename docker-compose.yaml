@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:18.1
+    container_name: hospitopt-pg
+    environment:
+      POSTGRES_USER: hospitopt_user
+      POSTGRES_PASSWORD: ${HOSPITOPT_DB_PASSWORD:-your_database_password_here}
+      POSTGRES_DB: hospitopt
+    ports:
+      - "5432:5432"
+    volumes:
+      - hospitopt_pg:/var/lib/postgresql
+
+volumes:
+  hospitopt_pg:

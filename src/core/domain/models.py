@@ -35,6 +35,7 @@ class Patient(BaseModel):
     lat: Latitude
     lon: Longitude
     time_to_hospital_minutes: PositiveInt
+    registered_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class Ambulance(BaseModel):
@@ -72,7 +73,10 @@ class PatientAssignment(BaseModel):
     patient_id: UUID
     hospital_id: UUID | None = None
     ambulance_id: UUID | None = None
-    travel_time_minutes: PositiveInt | None = None
+    estimated_travel_minutes: PositiveInt | None = None
+    deadline_slack_minutes: int | None = None
+    treatment_deadline_minutes: PositiveInt
+    patient_registered_at: datetime
     requires_urgent_transport: bool = False
     optimized_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

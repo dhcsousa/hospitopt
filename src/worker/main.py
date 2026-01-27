@@ -78,6 +78,8 @@ async def run_worker() -> None:
                         len(result.unassigned_patient_ids),
                     )
                 last_hash = current_hash
+            else:
+                logger.debug("No input changes detected, skipping optimization.")
 
             await asyncio.sleep(config.worker.poll_interval_seconds)
     finally:

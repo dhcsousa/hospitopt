@@ -21,20 +21,20 @@ def test_from_yaml_resolves_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
     yaml_path.write_text(
         """ingestion:
   type: db
-  host: env(DB_HOST)
-  port: env(DB_PORT)
-  database: env(DB_NAME)
-  user: env(DB_USER)
-  password: env(DB_PASS)
+  host: ENV("DB_HOST")
+  port: ENV("DB_PORT")
+  database: ENV("DB_NAME")
+  user: ENV("DB_USER")
+  password: ENV("DB_PASS")
 worker:
   poll_interval_seconds: 5.5
-  google_maps_api_key: env(GMAPS_KEY)
+  google_maps_api_key: ENV("GMAPS_KEY")
   db_connection:
-    host: env(DB_HOST)
-    port: env(DB_PORT)
-    database: env(DB_NAME)
-    user: env(DB_USER)
-    password: env(DB_PASS)
+    host: ENV("DB_HOST")
+    port: ENV("DB_PORT")
+    database: ENV("DB_NAME")
+    user: ENV(DB_USER)
+    password: ENV('DB_PASS')
 """
     )
 
@@ -52,20 +52,20 @@ def test_from_yaml_missing_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) 
     yaml_path.write_text(
         """ingestion:
   type: db
-  host: env(MISSING_ENV)
+  host: ENV(MISSING_ENV)
   port: 5432
   database: hospitopt
   user: user
   password: env(MISSING_ENV)
 worker:
   poll_interval_seconds: 1
-  google_maps_api_key: env(MISSING_ENV)
+  google_maps_api_key: ENV(MISSING_ENV)
   db_connection:
     host: localhost
     port: 5432
     database: hospitopt
     user: user
-    password: env(MISSING_ENV)
+    password: ENV(MISSING_ENV)
 """
     )
 

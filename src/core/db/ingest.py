@@ -63,6 +63,7 @@ class SQLAlchemyIngestor(DataIngestor):
                 lat=row.lat,
                 lon=row.lon,
                 time_to_hospital_minutes=row.time_to_hospital_minutes,
+                registered_at=row.registered_at,
             )
             for row in rows
         ]
