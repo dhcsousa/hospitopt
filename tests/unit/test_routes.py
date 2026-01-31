@@ -2,8 +2,8 @@ from datetime import timedelta
 
 import pytest
 
-from core.domain.models import Ambulance, Hospital, Patient
-from worker import routes
+from hospitopt_core.domain.models import Ambulance, Hospital, Patient
+from hospitopt_worker import routes
 
 
 class _Status:

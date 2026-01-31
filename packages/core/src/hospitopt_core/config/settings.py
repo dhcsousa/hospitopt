@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engin
 from sqlalchemy.orm import sessionmaker
 from typing_extensions import AsyncContextManager
 
-from core.config.logging import LoggingConfig
+from hospitopt_core.config.logging import LoggingConfig
 
 
 class EnvParser:

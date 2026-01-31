@@ -1,7 +1,7 @@
 import pytest
 
-from core.domain.models import Ambulance, Hospital, MinutesTables, Patient
-from worker import optimize
+from hospitopt_core.domain.models import Ambulance, Hospital, MinutesTables, Patient
+from hospitopt_worker import optimize
 
 
 @pytest.mark.asyncio

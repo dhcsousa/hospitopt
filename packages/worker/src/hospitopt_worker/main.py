@@ -8,12 +8,12 @@ from collections.abc import Sequence
 
 from google.maps import routing_v2
 
-from core.config.settings import AppConfig
-from core.config.env import Environment
-from core.db.ingest import SQLAlchemyIngestor
-from core.domain.models import Ambulance, Hospital, Patient
-from worker.db import DatabaseWriter, check_connection
-from worker.optimize import optimize_allocation
+from hospitopt_core.config.settings import AppConfig
+from hospitopt_core.config.env import Environment
+from hospitopt_core.db.ingest import SQLAlchemyIngestor
+from hospitopt_core.domain.models import Ambulance, Hospital, Patient
+from hospitopt_worker.db import DatabaseWriter, check_connection
+from hospitopt_worker.optimize import optimize_allocation
 
 logger = logging.getLogger(__name__)
 

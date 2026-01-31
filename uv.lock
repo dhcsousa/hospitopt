@@ -2,6 +2,14 @@ version = 1
 revision = 3
 requires-python = ">=3.14"
 
+[manifest]
+members = [
+    "hospitopt",
+    "hospitopt-api",
+    "hospitopt-core",
+    "hospitopt-worker",
+]
+
 [[package]]
 name = "aiohappyeyeballs"
 version = "2.6.1"
@@ -682,26 +690,14 @@ wheels = [
 [[package]]
 name = "hospitopt"
 version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "alembic" },
-    { name = "asyncpg" },
-    { name = "fastapi" },
-    { name = "google-maps-routing" },
-    { name = "greenlet" },
-    { name = "loguru" },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
-    { name = "pyomo" },
-    { name = "python-dotenv" },
-    { name = "pyyaml" },
-    { name = "sqlalchemy" },
-    { name = "uvicorn" },
-]
+source = { virtual = "." }
 
 [package.dev-dependencies]
 dev = [
     { name = "bandit" },
+    { name = "hospitopt-api" },
+    { name = "hospitopt-core" },
+    { name = "hospitopt-worker" },
     { name = "ipykernel" },
     { name = "mypy" },
     { name = "nbstripout" },
@@ -718,25 +714,13 @@ frontend = [
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "alembic", specifier = ">=1.18.1" },
-    { name = "asyncpg", specifier = ">=0.31.0" },
-    { name = "fastapi", specifier = ">=0.128.0" },
-    { name = "google-maps-routing", specifier = ">=0.8.0" },
-    { name = "greenlet", specifier = ">=3.3.1" },
-    { name = "loguru", specifier = ">=0.7.3" },
-    { name = "pydantic", specifier = ">=2.12.5" },
-    { name = "pydantic-settings", specifier = ">=2.12.0" },
-    { name = "pyomo", specifier = ">=6.9.5" },
-    { name = "python-dotenv", specifier = ">=1.2.1" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "sqlalchemy", specifier = ">=2.0.46" },
-    { name = "uvicorn", specifier = ">=0.40.0" },
-]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "bandit", specifier = ">=1.9.3" },
+    { name = "hospitopt-api", editable = "packages/api" },
+    { name = "hospitopt-core", editable = "packages/core" },
+    { name = "hospitopt-worker", editable = "packages/worker" },
     { name = "ipykernel", specifier = ">=7.1.0" },
     { name = "mypy", specifier = ">=1.19.1" },
     { name = "nbstripout", specifier = ">=0.9.0" },
@@ -750,6 +734,69 @@ frontend = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "reflex", specifier = ">=0.8.26" },
     { name = "reflex-enterprise", specifier = ">=0.4.3" },
+]
+
+[[package]]
+name = "hospitopt-api"
+version = "0.1.0"
+source = { editable = "packages/api" }
+dependencies = [
+    { name = "fastapi" },
+    { name = "hospitopt-core" },
+    { name = "uvicorn" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = ">=0.128.0" },
+    { name = "hospitopt-core", editable = "packages/core" },
+    { name = "uvicorn", specifier = ">=0.40.0" },
+]
+
+[[package]]
+name = "hospitopt-core"
+version = "0.1.0"
+source = { editable = "packages/core" }
+dependencies = [
+    { name = "alembic" },
+    { name = "asyncpg" },
+    { name = "loguru" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "python-dotenv" },
+    { name = "pyyaml" },
+    { name = "sqlalchemy" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "alembic", specifier = ">=1.18.1" },
+    { name = "asyncpg", specifier = ">=0.31.0" },
+    { name = "loguru", specifier = ">=0.7.3" },
+    { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "pydantic-settings", specifier = ">=2.12.0" },
+    { name = "python-dotenv", specifier = ">=1.2.1" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "sqlalchemy", specifier = ">=2.0.46" },
+]
+
+[[package]]
+name = "hospitopt-worker"
+version = "0.1.0"
+source = { editable = "packages/worker" }
+dependencies = [
+    { name = "google-maps-routing" },
+    { name = "greenlet" },
+    { name = "hospitopt-core" },
+    { name = "pyomo" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "google-maps-routing", specifier = ">=0.8.0" },
+    { name = "greenlet", specifier = ">=3.3.1" },
+    { name = "hospitopt-core", editable = "packages/core" },
+    { name = "pyomo", specifier = ">=6.9.5" },
 ]
 
 [[package]]

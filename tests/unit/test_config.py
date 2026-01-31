@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from core.config.settings import AppConfig
+from hospitopt_core.config.settings import AppConfig
 
 
 def test_from_yaml_resolves_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

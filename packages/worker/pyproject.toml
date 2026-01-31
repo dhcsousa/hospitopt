@@ -1,0 +1,22 @@
+[project]
+name = "hospitopt-worker"
+version = "0.1.0"
+description = "Background optimization worker for hospitopt"
+readme = "README.md"
+authors = [
+    { name = "Daniel Sousa", email = "danielsoussa@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "hospitopt-core",
+    "google-maps-routing>=0.8.0",
+    "greenlet>=3.3.1",
+    "pyomo>=6.9.5",
+]
+
+[tool.uv.sources]
+hospitopt-core = { workspace = true }
+
+[build-system]
+requires = ["uv_build>=0.9.24,<0.10.0"]
+build-backend = "uv_build"

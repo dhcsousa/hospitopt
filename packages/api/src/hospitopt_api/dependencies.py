@@ -15,7 +15,7 @@ async def verify_api_key(
     """Verify the API key matches the configured value."""
 
     # Access via request context to avoid circular import
-    from api.main import app
+    from hospitopt_api.main import app
 
     config = app.state.config
     if credentials.credentials != config.api.api_key.get_secret_value():
@@ -27,7 +27,7 @@ async def verify_api_key(
 
 async def get_session() -> AsyncIterator[AsyncSession]:
     """Get database session."""
-    from api.main import app
+    from hospitopt_api.main import app
 
     session_factory = app.state.session_factory
     async with session_factory() as session:

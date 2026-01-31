@@ -7,8 +7,8 @@ from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import AsyncContextManager
 
-from core.db.models import AmbulanceDB, HospitalDB, PatientDB
-from core.domain.models import Ambulance, Hospital, Patient
+from hospitopt_core.db.models import AmbulanceDB, HospitalDB, PatientDB
+from hospitopt_core.domain.models import Ambulance, Hospital, Patient
 
 
 SessionFactory = Callable[[], AsyncContextManager[AsyncSession, None]]

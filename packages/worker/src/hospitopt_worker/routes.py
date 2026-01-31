@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 from google.maps import routing_v2
 from google.type import latlng_pb2
 
-from core.domain.models import (
+from hospitopt_core.domain.models import (
     Ambulance,
     AmbulanceIndex,
     Hospital,

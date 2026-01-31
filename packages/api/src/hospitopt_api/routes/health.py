@@ -6,7 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 
-from api.dependencies import get_session
+from hospitopt_api.dependencies import get_session
 
 router = APIRouter()
 

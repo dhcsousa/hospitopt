@@ -7,8 +7,8 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import AsyncContextManager
 
-from core.db.models import PatientAssignmentDB
-from core.domain.models import OptimizationResult
+from hospitopt_core.db.models import PatientAssignmentDB
+from hospitopt_core.domain.models import OptimizationResult
 
 
 SessionFactory = Callable[[], AsyncContextManager[AsyncSession, None]]

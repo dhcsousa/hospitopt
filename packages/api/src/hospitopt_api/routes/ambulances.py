@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, Query, Security
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.dependencies import get_session, verify_api_key
-from api.models import AmbulancesPage
-from core.db.models import AmbulanceDB
-from core.domain.models import Ambulance
+from hospitopt_api.dependencies import get_session, verify_api_key
+from hospitopt_api.models import AmbulancesPage
+from hospitopt_core.db.models import AmbulanceDB
+from hospitopt_core.domain.models import Ambulance
 
 router = APIRouter(tags=["Resources"])
 

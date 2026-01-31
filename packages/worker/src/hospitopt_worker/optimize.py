@@ -7,7 +7,7 @@ import pyomo.environ as pyo
 from google.maps import routing_v2
 from pydantic import PositiveFloat
 
-from core.domain.models import (
+from hospitopt_core.domain.models import (
     Ambulance,
     AmbulanceIndex,
     Hospital,
@@ -18,7 +18,7 @@ from core.domain.models import (
     PatientAssignment,
     PatientIndex,
 )
-from worker.routes import build_minutes_tables
+from hospitopt_worker.routes import build_minutes_tables
 
 
 async def optimize_allocation(

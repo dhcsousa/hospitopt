@@ -1,7 +1,7 @@
 """API pydantic data models."""
 
 from pydantic import BaseModel
-from core.domain.models import Ambulance, Hospital, Patient, PatientAssignment
+from hospitopt_core.domain.models import Ambulance, Hospital, Patient, PatientAssignment
 
 
 class HospitalsPage(BaseModel):

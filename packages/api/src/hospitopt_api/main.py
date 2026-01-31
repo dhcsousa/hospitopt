@@ -7,9 +7,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from api.routes import ambulances, assignments, health, hospitals, patients
-from core.config.env import Environment
-from core.config.settings import AppConfig
+from hospitopt_api.routes import ambulances, assignments, health, hospitals, patients
+from hospitopt_core.config.env import Environment
+from hospitopt_core.config.settings import AppConfig
 
 env = Environment()
 config = AppConfig.from_yaml(env.CONFIG_FILE_PATH)
