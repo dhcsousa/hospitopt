@@ -35,6 +35,8 @@ worker:
     database: ENV("DB_NAME")
     user: ENV(DB_USER)
     password: ENV('DB_PASS')
+api:
+  api_key: ENV("GMAPS_KEY")
 """
     )
 
@@ -66,6 +68,8 @@ worker:
     database: hospitopt
     user: user
     password: ENV(MISSING_ENV)
+api:
+  api_key: ENV(MISSING_ENV)
 """
     )
 

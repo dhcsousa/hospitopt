@@ -5,7 +5,7 @@ from typing import Annotated, Any, Callable, Literal, cast
 
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, SecretStr
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, HttpUrl, SecretStr
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from typing_extensions import AsyncContextManager
@@ -88,11 +88,28 @@ class WorkerConfig(BaseModel):
     db_connection: DbConnectionConfig = Field(description="Database connection used by the worker.")
 
 
+class CorsConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    allow_origins: list[HttpUrl] = Field(default_factory=list, description="Allowed origins for CORS.")
+    allow_credentials: bool = Field(True, description="Allow credentials in CORS requests.")
+    allow_methods: list[str] = Field(default_factory=lambda: ["GET", "OPTIONS"], description="Allowed HTTP methods.")
+    allow_headers: list[str] = Field(default_factory=lambda: ["*"], description="Allowed headers.")
+
+
+class APIConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    api_key: FromEnv[SecretStr] = Field(description="API key for authentication.")
+    cors: CorsConfig = Field(default_factory=CorsConfig, description="CORS configuration.")
+
+
 class AppConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ingestion: IngestionConfig
     worker: WorkerConfig
+    api: APIConfig
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
     @classmethod
@@ -107,3 +124,32 @@ class AppConfig(BaseModel):
 
         data = yaml.safe_load(yaml_path.read_text()) or {}
         return cast("AppConfig", cls.model_validate(data))
+
+    @classmethod
+    def export_json_schema(cls, output_path: str | Path | None = None) -> dict[str, Any]:
+        """Export the JSON schema for the AppConfig model.
+
+        Args:
+            output_path: Optional path to save the schema as a JSON file.
+                        If None, only returns the schema dict.
+
+        Returns:
+            The JSON schema as a dictionary.
+
+        Example:
+            # Get schema as dict
+            schema = AppConfig.export_json_schema()
+
+            # Save schema to file
+            AppConfig.export_json_schema("schema/app_config_schema.json")
+        """
+        import json
+
+        schema = cast(dict[str, Any], cls.model_json_schema())
+
+        if output_path is not None:
+            output_file = Path(output_path)
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            output_file.write_text(json.dumps(schema, indent=2))
+
+        return schema

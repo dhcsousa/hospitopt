@@ -34,5 +34,20 @@
       "console": "integratedTerminal",
       "justMyCode": true
     },
+    {
+      "name": "Frontend (Reflex module)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "reflex",
+      "args": [
+        "run"
+      ],
+      "cwd": "${workspaceFolder}/frontend",
+      "env": {
+        "HOSPITOPT_API_URL": "http://localhost:8000"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": true
+    }
   ]
 }

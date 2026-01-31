@@ -82,7 +82,6 @@ async def optimize_allocation(
         urgent_assignments = [
             PatientAssignment(
                 patient_id=patient.id,
-                deadline_slack_minutes=patient.time_to_hospital_minutes,
                 treatment_deadline_minutes=patient.time_to_hospital_minutes,
                 patient_registered_at=patient.registered_at,
                 requires_urgent_transport=True,
@@ -168,9 +167,6 @@ async def optimize_allocation(
         assignments.extend(
             PatientAssignment(
                 patient_id=patient_id,
-                deadline_slack_minutes=next(
-                    patient.time_to_hospital_minutes for patient in patient_list if patient.id == patient_id
-                ),
                 treatment_deadline_minutes=next(
                     patient.time_to_hospital_minutes for patient in patient_list if patient.id == patient_id
                 ),

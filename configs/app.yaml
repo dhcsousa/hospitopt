@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schemas/config.json
 ingestion:
   type: db
   host: localhost
@@ -15,3 +16,18 @@ worker:
     database: hospitopt
     user: hospitopt_user
     password: ENV("HOSPITOPT_DB_PASSWORD")
+
+api:
+  api_key: ENV("HOSPITOPT_API_KEY")
+  cors:
+    allow_origins:
+      - http://localhost:3000
+      - http://127.0.0.1:3000
+      - http://localhost:8001
+      - http://127.0.0.1:8001
+    allow_credentials: true
+    allow_methods:
+      - GET
+      - OPTIONS
+    allow_headers:
+      - "*"
