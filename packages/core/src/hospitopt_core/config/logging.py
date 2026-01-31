@@ -97,7 +97,7 @@ class LoggingConfig(BaseModel):
         )
 
 
-class InterceptHandler(logging.Handler):
+class InterceptHandler(logging.Handler):  # pragma: no cover
     """Redirect standard library logging to Loguru."""
 
     def emit(self, record: logging.LogRecord) -> None:

@@ -41,9 +41,22 @@ jobs:
       - name: Run pre-commit
         run: uv run pre-commit run --all-files --show-diff-on-failure
 
-      - name: Run unit tests
-        run: uv run pytest -q tests/unit || (echo "Unit tests failed" && exit 1)
+      - name: Run tests with coverage
+        run: uv run pytest -v
         continue-on-error: false
+        env:
+          CONFIG_FILE_PATH: configs/app.yaml
+          HOSPITOPT_DB_PASSWORD: testpassword
+          GOOGLE_MAPS_API_KEY: testkey
+          HOSPITOPT_API_KEY: testkey
+
+      - name: Upload coverage to Codecov
+        if: success()
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: true
+          verbose: true
 
       - name: Prune uv cache
         run: uv cache prune --ci

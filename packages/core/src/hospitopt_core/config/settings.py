@@ -56,7 +56,7 @@ class DbConnectionConfig(BaseModel):
 
     def to_engine_session_factory(
         self,
-    ) -> tuple["AsyncEngine", Callable[[], AsyncContextManager["AsyncSession", None]]]:
+    ) -> tuple["AsyncEngine", Callable[[], AsyncContextManager["AsyncSession", None]]]:  # pragma: no cover
         """Create an async engine and session factory for SQLAlchemy."""
 
         engine: AsyncEngine = create_async_engine(

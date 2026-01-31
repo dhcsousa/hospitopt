@@ -16,7 +16,7 @@ config = AppConfig.from_yaml(env.CONFIG_FILE_PATH)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # pragma: no cover
     """Manage app lifespan - setup and teardown."""
     config.logging.setup_logging(level=env.LOG_LEVEL)
 
