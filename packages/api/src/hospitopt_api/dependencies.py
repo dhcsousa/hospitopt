@@ -18,7 +18,7 @@ async def verify_api_key(
     from hospitopt_api.main import app
 
     config = app.state.config
-    if credentials.credentials != config.api.api_key.get_secret_value():
+    if credentials.credentials != config.api_key.get_secret_value():
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API key",

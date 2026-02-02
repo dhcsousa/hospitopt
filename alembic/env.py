@@ -10,9 +10,9 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
-from core.config.env import Environment
-from core.config.settings import AppConfig
-from core.db.models import Base
+from hospitopt_core.config.env import Environment
+from hospitopt_core.db.models import Base
+from hospitopt_worker.settings import WorkerConfig
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -48,8 +48,12 @@ if not database_url:
 if not database_url:
     try:
         env = Environment()
-        app_config = AppConfig.from_yaml(env.CONFIG_FILE_PATH)
-        database_url = app_config.ingestion.connection_string()
+        if not env.WORKER_CONFIG_FILE_PATH:
+            raise ValueError(
+                "WORKER_CONFIG_FILE_PATH environment variable is not set. For running migrations, this must be set."
+            )
+        worker_config = WorkerConfig.from_yaml(env.WORKER_CONFIG_FILE_PATH)
+        database_url = worker_config.ingestion.connection_string()
     except Exception:
         database_url = database_url
 
@@ -57,7 +61,7 @@ if database_url:
     config.set_main_option("sqlalchemy.url", database_url)
 else:
     raise RuntimeError(
-        "Missing database configuration. Set DATABASE_URL or CONFIG_FILE_PATH (.env) "
+        "Missing database configuration. Set DATABASE_URL or WORKER_CONFIG_FILE_PATH (.env) "
         "to a YAML config containing DB connection details."
     )
 

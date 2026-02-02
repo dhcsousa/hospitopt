@@ -1,0 +1,163 @@
+{
+  "$defs": {
+    "CorsConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "allow_origins": {
+          "description": "Allowed origins for CORS.",
+          "items": {
+            "format": "uri",
+            "maxLength": 2083,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Allow Origins",
+          "type": "array"
+        },
+        "allow_credentials": {
+          "default": true,
+          "description": "Allow credentials in CORS requests.",
+          "title": "Allow Credentials",
+          "type": "boolean"
+        },
+        "allow_methods": {
+          "description": "Allowed HTTP methods.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Allow Methods",
+          "type": "array"
+        },
+        "allow_headers": {
+          "description": "Allowed headers.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Allow Headers",
+          "type": "array"
+        }
+      },
+      "title": "CorsConfig",
+      "type": "object"
+    },
+    "DbConnectionConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "$ref": "#/$defs/FromEnv_str_",
+          "description": "Database hostname."
+        },
+        "port": {
+          "$ref": "#/$defs/FromEnv_int_",
+          "default": 5432,
+          "description": "Database port, defaults to 5432."
+        },
+        "database": {
+          "$ref": "#/$defs/FromEnv_str_",
+          "description": "Database name."
+        },
+        "user": {
+          "$ref": "#/$defs/FromEnv_str_",
+          "description": "User name to use for connection."
+        },
+        "password": {
+          "$ref": "#/$defs/FromEnv_SecretStr_",
+          "description": "Password to use for connection."
+        },
+        "pool_size": {
+          "default": 10,
+          "description": "Connection pool size.",
+          "title": "Pool Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "host",
+        "database",
+        "user",
+        "password"
+      ],
+      "title": "DbConnectionConfig",
+      "type": "object"
+    },
+    "FromEnv_SecretStr_": {
+      "format": "password",
+      "type": "string",
+      "writeOnly": true
+    },
+    "FromEnv_int_": {
+      "type": "integer"
+    },
+    "FromEnv_str_": {
+      "type": "string"
+    },
+    "LoggingConfig": {
+      "description": "Logging configuration with production-grade defaults.",
+      "properties": {
+        "enable_file_logging": {
+          "default": false,
+          "description": "Enable logging to files.",
+          "title": "Enable File Logging",
+          "type": "boolean"
+        },
+        "log_dir": {
+          "default": "logs",
+          "description": "Directory for log files.",
+          "format": "path",
+          "title": "Log Dir",
+          "type": "string"
+        },
+        "log_file_name": {
+          "default": "{time:YYYY-MM-DD}.log",
+          "description": "Log file name pattern.",
+          "title": "Log File Name",
+          "type": "string"
+        },
+        "rotation": {
+          "default": "00:00",
+          "description": "Log rotation schedule (e.g., '00:00' for daily, '1 week', '100 MB').",
+          "title": "Rotation",
+          "type": "string"
+        },
+        "retention": {
+          "default": "30 days",
+          "description": "Log retention period (e.g., '30 days', '1 week').",
+          "title": "Retention",
+          "type": "string"
+        },
+        "compression": {
+          "default": "zip",
+          "description": "Compression format for rotated logs (e.g., 'zip', 'gz', 'tar.gz').",
+          "title": "Compression",
+          "type": "string"
+        }
+      },
+      "title": "LoggingConfig",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "logging": {
+      "$ref": "#/$defs/LoggingConfig"
+    },
+    "db_connection": {
+      "$ref": "#/$defs/DbConnectionConfig",
+      "description": "Database connection used by the worker."
+    },
+    "api_key": {
+      "$ref": "#/$defs/FromEnv_SecretStr_",
+      "description": "API key for authentication."
+    },
+    "cors": {
+      "$ref": "#/$defs/CorsConfig",
+      "description": "CORS configuration."
+    }
+  },
+  "required": [
+    "db_connection",
+    "api_key"
+  ],
+  "title": "APIConfig",
+  "type": "object"
+}

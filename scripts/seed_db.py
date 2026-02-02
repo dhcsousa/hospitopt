@@ -12,9 +12,9 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from core.config.env import Environment
-from core.config.settings import AppConfig
-from core.db.models import AmbulanceDB, HospitalDB, PatientDB
+from hospitopt_core.config.env import Environment
+from hospitopt_core.db.models import AmbulanceDB, HospitalDB, PatientDB
+from hospitopt_worker.settings import WorkerConfig
 
 
 class SeedConfig(BaseModel):
@@ -108,7 +108,7 @@ def _parse_args() -> SeedConfig:
 
 async def main() -> None:
     env = Environment()
-    app_config = AppConfig.from_yaml(env.CONFIG_FILE_PATH)
+    app_config = WorkerConfig.from_yaml(env.CONFIG_FILE_PATH)
     db_url = app_config.ingestion.connection_string()
 
     engine = create_async_engine(db_url, pool_pre_ping=True)
