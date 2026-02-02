@@ -1,4 +1,4 @@
-![CI: Pre-commit & Tests](https://github.com/dhcsousa/hospitopt/actions/workflows/checks.yaml/badge.svg)
+![Lint, tests and coverage](https://github.com/dhcsousa/hospitopt/actions/workflows/checks.yaml/badge.svg)
 [![codecov](https://codecov.io/github/dhcsousa/hospitopt/graph/badge.svg?token=24SLLFHARQ)](https://codecov.io/github/dhcsousa/hospitopt)
 [![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 

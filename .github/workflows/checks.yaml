@@ -1,10 +1,10 @@
-name: Pre-commit and Unit Tests
+name: Lint, tests and coverage
 
 on: [push, pull_request]
 
 jobs:
   build:
-    name: Lint & Tests
+    name: Lint, tests and coverage
     runs-on: ubuntu-latest
     env:
       UV_CACHE_DIR: /tmp/.uv-cache
