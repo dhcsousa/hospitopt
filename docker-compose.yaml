@@ -1,7 +1,7 @@
 services:
   db:
     image: postgres:18.1
-    container_name: hospitopt-pg
+    container_name: hospitopt-db
     environment:
       POSTGRES_USER: hospitopt_user
       POSTGRES_PASSWORD: ${HOSPITOPT_DB_PASSWORD:-your_database_password_here}
@@ -10,6 +10,75 @@ services:
       - "5432:5432"
     volumes:
       - hospitopt_pg:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hospitopt_user -d hospitopt"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - hospitopt-network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: hospitopt-worker
+    environment:
+      WORKER_CONFIG_FILE_PATH: /app/configs/worker.yaml
+      HOSPITOPT_DB_PASSWORD: ${HOSPITOPT_DB_PASSWORD:-your_database_password_here}
+      HOSPITOPT_DB_HOST: db
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-your_google_maps_api_key_here}
+    volumes:
+      - ./configs:/app/configs:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - hospitopt-network
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: hospitopt-api
+    environment:
+      API_CONFIG_FILE_PATH: /app/configs/api.yaml
+      HOSPITOPT_DB_HOST: db
+      HOSPITOPT_DB_PASSWORD: ${HOSPITOPT_DB_PASSWORD:-your_database_password_here}
+      HOSPITOPT_API_KEY: ${HOSPITOPT_API_KEY:-your_secure_api_key_here}
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./configs:/app/configs:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - hospitopt-network
+    restart: unless-stopped
+
+  reflex-frontend:
+    build:
+      context: frontend
+    container_name: hospitopt-reflex-frontend
+    environment:
+      HOSPITOPT_API_URL: http://api:8000
+      HOSPITOPT_API_KEY: ${HOSPITOPT_API_KEY:-your_secure_api_key_here}
+      REFLEX_ACCESS_TOKEN: ${REFLEX_ACCESS_TOKEN}
+      REFLEX_API_URL: http://localhost:8001
+    ports:
+      - "3000:3000"
+      - "8001:8000"
+    depends_on:
+      - api
+    networks:
+      - hospitopt-network
+    restart: unless-stopped
+
+networks:
+  hospitopt-network:
+    driver: bridge
 
 volumes:
   hospitopt_pg:
