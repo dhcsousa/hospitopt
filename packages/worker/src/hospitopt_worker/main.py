@@ -8,17 +8,21 @@ from collections.abc import Sequence
 
 from google.maps import routing_v2
 
-from hospitopt_core.config.settings import AppConfig
 from hospitopt_core.config.env import Environment
 from hospitopt_core.db.ingest import SQLAlchemyIngestor
 from hospitopt_core.domain.models import Ambulance, Hospital, Patient
 from hospitopt_worker.db import DatabaseWriter, check_connection
 from hospitopt_worker.optimize import optimize_allocation
+from hospitopt_worker.settings import WorkerConfig
 
 logger = logging.getLogger(__name__)
 
 env = Environment()
-config = AppConfig.from_yaml(env.CONFIG_FILE_PATH)
+if not env.WORKER_CONFIG_FILE_PATH:  # pragma: no cover
+    raise ValueError(
+        "WORKER_CONFIG_FILE_PATH environment variable is not set. For running the worker, this must be set."
+    )
+config = WorkerConfig.from_yaml(env.WORKER_CONFIG_FILE_PATH)
 
 
 def _hash_inputs(
@@ -41,8 +45,7 @@ async def run_worker() -> None:
         raise ValueError(f"Unsupported ingestion type: {config.ingestion.type}")
 
     ingestion_engine, ingestion_sessions = config.ingestion.to_engine_session_factory()
-    worker_engine, worker_sessions = config.worker.db_connection.to_engine_session_factory()
-
+    worker_engine, worker_sessions = config.db_connection.to_engine_session_factory()
     await check_connection(ingestion_sessions)
     await check_connection(worker_sessions)
 
@@ -50,7 +53,7 @@ async def run_worker() -> None:
     writer = DatabaseWriter(worker_sessions)
 
     routes_client = routing_v2.RoutesAsyncClient(
-        client_options={"api_key": config.worker.google_maps_api_key.get_secret_value()}
+        client_options={"api_key": config.google_maps_api_key.get_secret_value()}
     )
 
     last_hash: str | None = None
@@ -81,7 +84,7 @@ async def run_worker() -> None:
             else:
                 logger.debug("No input changes detected, skipping optimization.")
 
-            await asyncio.sleep(config.worker.poll_interval_seconds)
+            await asyncio.sleep(config.poll_interval_seconds)
     finally:
         await ingestion_engine.dispose()
         await worker_engine.dispose()

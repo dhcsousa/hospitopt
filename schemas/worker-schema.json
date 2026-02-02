@@ -1,63 +1,5 @@
 {
   "$defs": {
-    "APIConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "api_key": {
-          "$ref": "#/$defs/FromEnv_SecretStr_",
-          "description": "API key for authentication."
-        },
-        "cors": {
-          "$ref": "#/$defs/CorsConfig",
-          "description": "CORS configuration."
-        }
-      },
-      "required": [
-        "api_key"
-      ],
-      "title": "APIConfig",
-      "type": "object"
-    },
-    "CorsConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "allow_origins": {
-          "description": "Allowed origins for CORS.",
-          "items": {
-            "format": "uri",
-            "maxLength": 2083,
-            "minLength": 1,
-            "type": "string"
-          },
-          "title": "Allow Origins",
-          "type": "array"
-        },
-        "allow_credentials": {
-          "default": true,
-          "description": "Allow credentials in CORS requests.",
-          "title": "Allow Credentials",
-          "type": "boolean"
-        },
-        "allow_methods": {
-          "description": "Allowed HTTP methods.",
-          "items": {
-            "type": "string"
-          },
-          "title": "Allow Methods",
-          "type": "array"
-        },
-        "allow_headers": {
-          "description": "Allowed headers.",
-          "items": {
-            "type": "string"
-          },
-          "title": "Allow Headers",
-          "type": "array"
-        }
-      },
-      "title": "CorsConfig",
-      "type": "object"
-    },
     "DbConnectionConfig": {
       "additionalProperties": false,
       "properties": {
@@ -202,53 +144,37 @@
       },
       "title": "LoggingConfig",
       "type": "object"
-    },
-    "WorkerConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "poll_interval_seconds": {
-          "$ref": "#/$defs/FromEnv_float__Gt_gt_0_",
-          "default": 10.0,
-          "description": "Polling interval in seconds.",
-          "gt": 0
-        },
-        "google_maps_api_key": {
-          "$ref": "#/$defs/FromEnv_SecretStr_",
-          "description": "Google Maps API key."
-        },
-        "db_connection": {
-          "$ref": "#/$defs/DbConnectionConfig",
-          "description": "Database connection used by the worker."
-        }
-      },
-      "required": [
-        "google_maps_api_key",
-        "db_connection"
-      ],
-      "title": "WorkerConfig",
-      "type": "object"
     }
   },
   "additionalProperties": false,
   "properties": {
-    "ingestion": {
-      "$ref": "#/$defs/IngestionConfig"
-    },
-    "worker": {
-      "$ref": "#/$defs/WorkerConfig"
-    },
-    "api": {
-      "$ref": "#/$defs/APIConfig"
-    },
     "logging": {
       "$ref": "#/$defs/LoggingConfig"
+    },
+    "db_connection": {
+      "$ref": "#/$defs/DbConnectionConfig",
+      "description": "Database connection used by the worker."
+    },
+    "poll_interval_seconds": {
+      "$ref": "#/$defs/FromEnv_float__Gt_gt_0_",
+      "default": 10.0,
+      "description": "Polling interval in seconds.",
+      "gt": 0
+    },
+    "google_maps_api_key": {
+      "$ref": "#/$defs/FromEnv_SecretStr_",
+      "description": "Google Maps API key."
+    },
+    "ingestion": {
+      "$ref": "#/$defs/IngestionConfig",
+      "description": "Ingestion configuration, only db type is supported for now."
     }
   },
   "required": [
-    "ingestion",
-    "worker",
-    "api"
+    "db_connection",
+    "google_maps_api_key",
+    "ingestion"
   ],
-  "title": "AppConfig",
+  "title": "WorkerConfig",
   "type": "object"
 }

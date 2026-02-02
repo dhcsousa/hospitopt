@@ -1,10 +1,10 @@
-name: Pre-commit and Unit Tests
+name: Lint, tests and coverage
 
 on: [push, pull_request]
 
 jobs:
   build:
-    name: Lint & Tests
+    name: Lint, tests and coverage
     runs-on: ubuntu-latest
     env:
       UV_CACHE_DIR: /tmp/.uv-cache
@@ -45,7 +45,9 @@ jobs:
         run: uv run pytest -v
         continue-on-error: false
         env:
-          CONFIG_FILE_PATH: configs/app.yaml
+          API_CONFIG_FILE_PATH: configs/api.yaml
+          WORKER_CONFIG_FILE_PATH: configs/worker.yaml
+          HOSPITOPT_DB_HOST: localhost
           HOSPITOPT_DB_PASSWORD: testpassword
           GOOGLE_MAPS_API_KEY: testkey
           HOSPITOPT_API_KEY: testkey

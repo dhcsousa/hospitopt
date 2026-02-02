@@ -10,10 +10,12 @@ class Environment(BaseSettings):
 
     Attributes:
         LOG_LEVEL (Literal["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"]): The level of logging for the application.
-        CONFIG_FILE_PATH (Path): The path to the configuration file for hospitopt.
+        API_CONFIG_FILE_PATH (Path | None): The path to the API configuration file.
+        WORKER_CONFIG_FILE_PATH (Path | None): The path to the Worker configuration file.
     """
 
     LOG_LEVEL: Literal["TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"] = "INFO"
-    CONFIG_FILE_PATH: Path
+    API_CONFIG_FILE_PATH: Path | None = None
+    WORKER_CONFIG_FILE_PATH: Path | None = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="allow")

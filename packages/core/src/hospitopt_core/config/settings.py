@@ -1,11 +1,13 @@
+"""Core application configuration settings."""
+
 import os
 import re
 from pathlib import Path
-from typing import Annotated, Any, Callable, Literal, cast
+from typing import Annotated, Any, Callable, Self, cast
 
 import yaml
 from dotenv import load_dotenv
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, HttpUrl, SecretStr
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, SecretStr
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from typing_extensions import AsyncContextManager
@@ -76,44 +78,14 @@ class DbConnectionConfig(BaseModel):
         return engine, session_factory
 
 
-class IngestionConfig(DbConnectionConfig):
-    type: Literal["db"] = Field("db", description="Ingestion backend type.")
-
-
-class WorkerConfig(BaseModel):
+class BaseAppConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    poll_interval_seconds: FromEnv[float] = Field(10.0, gt=0, description="Polling interval in seconds.")
-    google_maps_api_key: FromEnv[SecretStr] = Field(description="Google Maps API key.")
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)
     db_connection: DbConnectionConfig = Field(description="Database connection used by the worker.")
 
-
-class CorsConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    allow_origins: list[HttpUrl] = Field(default_factory=list, description="Allowed origins for CORS.")
-    allow_credentials: bool = Field(True, description="Allow credentials in CORS requests.")
-    allow_methods: list[str] = Field(default_factory=lambda: ["GET", "OPTIONS"], description="Allowed HTTP methods.")
-    allow_headers: list[str] = Field(default_factory=lambda: ["*"], description="Allowed headers.")
-
-
-class APIConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    api_key: FromEnv[SecretStr] = Field(description="API key for authentication.")
-    cors: CorsConfig = Field(default_factory=CorsConfig, description="CORS configuration.")
-
-
-class AppConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    ingestion: IngestionConfig
-    worker: WorkerConfig
-    api: APIConfig
-    logging: LoggingConfig = Field(default_factory=LoggingConfig)
-
     @classmethod
-    def from_yaml(cls, path: str | Path, load_env: bool = True) -> "AppConfig":
+    def from_yaml(cls, path: str | Path, load_env: bool = True) -> Self:
         """Load configuration from a YAML file and resolve env(...) placeholders."""
         yaml_path = Path(path)
         if not yaml_path.exists():
@@ -123,11 +95,11 @@ class AppConfig(BaseModel):
             load_dotenv()
 
         data = yaml.safe_load(yaml_path.read_text()) or {}
-        return cast("AppConfig", cls.model_validate(data))
+        return cast(Self, cls.model_validate(data))
 
     @classmethod
-    def export_json_schema(cls, output_path: str | Path | None = None) -> dict[str, Any]:
-        """Export the JSON schema for the AppConfig model.
+    def export_json_schema(cls, output_path: str | Path | None = None) -> dict[str, Any]:  # pragma: no cover
+        """Export the JSON schema for the configuration model.
 
         Args:
             output_path: Optional path to save the schema as a JSON file.

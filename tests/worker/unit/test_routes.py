@@ -82,3 +82,36 @@ async def test_build_minutes_tables_uses_compute(monkeypatch):
 
     assert minutes_tables.patient_to_hospital == {(0, 0): 2}
     assert minutes_tables.ambulance_to_patient == {(0, 0): 2}
+
+
+@pytest.mark.asyncio
+async def test_compute_route_matrix_minutes_empty_origins() -> None:
+    """Test that empty origins returns empty list."""
+    result = await routes._compute_route_matrix_minutes(
+        client=None,  # type: ignore
+        origins=[],
+        destinations=[(1.0, 1.0)],
+    )
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_compute_route_matrix_minutes_empty_destinations() -> None:
+    """Test that empty destinations returns empty list."""
+    result = await routes._compute_route_matrix_minutes(
+        client=None,  # type: ignore
+        origins=[(1.0, 1.0)],
+        destinations=[],
+    )
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_compute_route_matrix_minutes_both_empty() -> None:
+    """Test that empty origins and destinations returns empty list."""
+    result = await routes._compute_route_matrix_minutes(
+        client=None,  # type: ignore
+        origins=[],
+        destinations=[],
+    )
+    assert result == []

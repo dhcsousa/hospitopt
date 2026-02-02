@@ -1,5 +1,3 @@
-"""Integration tests for API endpoints."""
-
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -32,6 +30,43 @@ async def test_liveness_endpoint(async_client: AsyncClient):
     response = await async_client.get("/health/live")
     assert response.status_code == 200
     assert response.json() == {"status": "alive"}
+
+
+@pytest.mark.asyncio
+async def test_health_endpoint_database_error(fastapi_app):
+    """Test health endpoint returns 503 when database is unavailable."""
+    from unittest.mock import AsyncMock
+
+    from httpx import ASGITransport, AsyncClient
+    from sqlalchemy.exc import OperationalError
+
+    # Mock the session to raise a database error
+    async def mock_get_session():
+        mock_session = AsyncMock()
+        mock_session.execute.side_effect = OperationalError("Connection refused", None, None)
+        yield mock_session
+
+    # Override the dependency
+    from hospitopt_api.dependencies import get_session
+
+    fastapi_app.dependency_overrides[get_session] = mock_get_session
+
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=fastapi_app),
+            base_url="http://test",
+        ) as client:
+            response = await client.get("/health")
+
+            assert response.status_code == 503
+            data = response.json()
+            assert data["status"] == "unhealthy"
+            assert data["checks"]["api"] == "healthy"
+            assert "unhealthy" in data["checks"]["database"]
+            assert "Connection refused" in data["checks"]["database"]
+    finally:
+        # Clean up override
+        fastapi_app.dependency_overrides.clear()
 
 
 @pytest.mark.asyncio

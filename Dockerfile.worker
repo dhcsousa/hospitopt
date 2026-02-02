@@ -1,0 +1,48 @@
+# Dockerfile for hospitopt Worker service
+FROM ghcr.io/astral-sh/uv:python3.14-bookworm-slim AS builder
+
+WORKDIR /app
+
+# Install system dependencies (including GLPK for pyomo)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    glpk-utils \
+    libglpk-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy workspace files
+COPY pyproject.toml uv.lock ./
+COPY packages/core ./packages/core
+COPY packages/worker ./packages/worker
+
+# Install dependencies
+RUN uv sync --frozen --no-dev --package hospitopt-worker
+
+# Runtime stage
+FROM python:3.14-slim-bookworm
+
+WORKDIR /app
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    glpk-utils \
+    libglpk-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy application code
+COPY --from=builder /app/packages /app/packages
+
+# Set environment variables
+ENV PATH="/app/.venv/bin:$PATH" \
+    PYTHONUNBUFFERED=1
+# Ensure logs are output immediately
+
+# Health check (basic process check)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
+    CMD pgrep -f "python.*hospitopt_worker" || exit 1
+
+# Run the worker
+CMD ["python", "-m", "hospitopt_worker.main"]

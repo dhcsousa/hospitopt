@@ -1,5 +1,3 @@
-"""Tests for worker database operations."""
-
 from datetime import UTC, datetime
 from uuid import uuid4
 
