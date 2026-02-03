@@ -6,7 +6,7 @@
 
 A Python-based optimization system that uses constraint programming to maximize the number of lives saved in emergency medical scenarios. The system models hospitals, available beds, ambulance positions, and patient needs, then computes optimized resource allocations to improve medical response and outcomes during mass casualty events.
 
-![HospitOPT Demo](https://github-production-user-asset-6210df.s3.amazonaws.com/81489741/544559778-11f9cd9f-84df-4abf-8f27-bc27bd5eda91.gif?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20260203%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20260203T203108Z&X-Amz-Expires=300&X-Amz-Signature=bff689f6542d7d6cee9f99859a898fff8fffb1202ff1e4fa7c85f69fee49ed7e&X-Amz-SignedHeaders=host)
+![HospitOPT Demo](https://github.com/user-attachments/assets/11f9cd9f-84df-4abf-8f27-bc27bd5eda91)
 
 ## Overview
 
