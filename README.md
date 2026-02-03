@@ -1,4 +1,4 @@
-![Lint, tests and coverage](https://github.com/dhcsousa/hospitopt/actions/workflows/checks.yaml/badge.svg)
+![CI](https://github.com/dhcsousa/hospitopt/actions/workflows/ci.yaml/badge.svg)
 [![codecov](https://codecov.io/github/dhcsousa/hospitopt/graph/badge.svg?token=24SLLFHARQ)](https://codecov.io/github/dhcsousa/hospitopt)
 [![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 
@@ -143,7 +143,13 @@ uv run scripts/seed_db.py
 
 #### Option B: Using Docker Compose (Recommended)
 
-Run all services together:
+To use the published images from GHCR without building, run:
+
+```bash
+docker compose up -d
+```
+
+To build the images locally:
 
 ```bash
 docker compose up -d --build
