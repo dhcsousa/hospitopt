@@ -1,5 +1,5 @@
 ![CI](https://github.com/dhcsousa/hospitopt/actions/workflows/ci.yaml/badge.svg)
-[![codecov](https://codecov.io/github/dhcsousa/hospitopt/graph/badge.svg?token=24SLLFHARQ)](https://codecov.io/github/dhcsousa/hospitopt)
+[![codecov](https://codecov.io/github/dhcsousa/hospitopt/graph/badge.svg?token=FB1PEO61GG)](https://codecov.io/github/dhcsousa/hospitopt)
 [![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 
 # HospitOPT
