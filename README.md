@@ -1,4 +1,4 @@
-![Lint, tests and coverage](https://github.com/dhcsousa/hospitopt/actions/workflows/checks.yaml/badge.svg)
+![CI](https://github.com/dhcsousa/hospitopt/actions/workflows/ci.yaml/badge.svg)
 [![codecov](https://codecov.io/github/dhcsousa/hospitopt/graph/badge.svg?token=24SLLFHARQ)](https://codecov.io/github/dhcsousa/hospitopt)
 [![security: bandit](https://img.shields.io/badge/security-bandit-yellow.svg)](https://github.com/PyCQA/bandit)
 
@@ -6,7 +6,7 @@
 
 A Python-based optimization system that uses constraint programming to maximize the number of lives saved in emergency medical scenarios. The system models hospitals, available beds, ambulance positions, and patient needs, then computes optimized resource allocations to improve medical response and outcomes during mass casualty events.
 
-![HospitOPT Demo](https://i.imgur.com/bjfNALR.gif)
+![HospitOPT Demo](https://github.com/user-attachments/assets/11f9cd9f-84df-4abf-8f27-bc27bd5eda91)
 
 ## Overview
 
@@ -143,7 +143,13 @@ uv run scripts/seed_db.py
 
 #### Option B: Using Docker Compose (Recommended)
 
-Run all services together:
+To use the published images from GHCR without building, run:
+
+```bash
+docker compose up -d
+```
+
+To build the images locally:
 
 ```bash
 docker compose up -d --build

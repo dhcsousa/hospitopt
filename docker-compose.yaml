@@ -19,6 +19,7 @@ services:
       - hospitopt-network
 
   worker:
+    image: ghcr.io/dhcsousa/hospitopt-worker:latest
     build:
       context: .
       dockerfile: Dockerfile.worker
@@ -38,6 +39,7 @@ services:
     restart: unless-stopped
 
   api:
+    image: ghcr.io/dhcsousa/hospitopt-api:latest
     build:
       context: .
       dockerfile: Dockerfile.api
@@ -59,6 +61,7 @@ services:
     restart: unless-stopped
 
   reflex-frontend:
+    image: ghcr.io/dhcsousa/hospitopt-frontend:latest
     build:
       context: frontend
     container_name: hospitopt-reflex-frontend
