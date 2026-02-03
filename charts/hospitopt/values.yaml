@@ -1,0 +1,101 @@
+nameOverride: ""
+fullnameOverride: ""
+
+imagePullSecrets: []
+
+api:
+  enabled: true
+  image:
+    repository: ghcr.io/dhcsousa/hospitopt-api
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  service:
+    type: ClusterIP
+    port: 8000
+  resources: {}
+
+worker:
+  enabled: true
+  image:
+    repository: ghcr.io/dhcsousa/hospitopt-worker
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  resources: {}
+
+frontend:
+  enabled: true
+  image:
+    repository: ghcr.io/dhcsousa/hospitopt-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  service:
+    type: ClusterIP
+    port: 3000
+    adminPort: 8001
+  resources: {}
+  apiUrl: ""
+
+postgresql:
+  enabled: true
+  fullnameOverride: hospitopt-postgresql
+  auth:
+    username: hospitopt_user
+    password: "your_database_password_here"
+    database: hospitopt
+  primary:
+    persistence:
+      enabled: true
+      accessModes:
+        - ReadWriteOnce
+      size: 8Gi
+      storageClass: ""
+
+secrets:
+  HOSPITOPT_API_KEY: "your_secure_api_key_here"
+  GOOGLE_MAPS_API_KEY: "your_google_maps_api_key_here"
+  REFLEX_ACCESS_TOKEN: "your_reflex_access_token_here"
+
+config:
+  apiYaml: |
+    api_key: ENV("HOSPITOPT_API_KEY")
+
+    db_connection:
+      host: ENV("HOSPITOPT_DB_HOST")
+      port: 5432
+      database: hospitopt
+      user: hospitopt_user
+      password: ENV("HOSPITOPT_DB_PASSWORD")
+
+    cors:
+      allow_origins:
+        - http://localhost:3000
+        - http://127.0.0.1:3000
+        - http://localhost:8001
+        - http://127.0.0.1:8001
+      allow_credentials: true
+      allow_methods:
+        - GET
+        - OPTIONS
+      allow_headers:
+        - "*"
+
+  workerYaml: |
+    poll_interval_seconds: 10.0
+    google_maps_api_key: ENV("GOOGLE_MAPS_API_KEY")
+    db_connection:
+      host: ENV("HOSPITOPT_DB_HOST")
+      port: 5432
+      database: hospitopt
+      user: hospitopt_user
+      password: ENV("HOSPITOPT_DB_PASSWORD")
+
+    ingestion:
+      type: db
+      host: ENV("HOSPITOPT_DB_HOST")
+      port: 5432
+      database: hospitopt
+      user: hospitopt_user
+      password: ENV("HOSPITOPT_DB_PASSWORD")

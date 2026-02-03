@@ -1,0 +1,56 @@
+{{- if .Values.worker.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hospitopt.fullname" . }}-worker
+  labels:
+    {{- include "hospitopt.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: worker
+      {{- include "hospitopt.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: worker
+        {{- include "hospitopt.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: worker
+          image: {{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}
+          imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
+          env:
+            - name: WORKER_CONFIG_FILE_PATH
+              value: /app/configs/worker.yaml
+            - name: HOSPITOPT_DB_HOST
+              value: {{ .Values.postgresql.fullnameOverride | quote }}
+            - name: HOSPITOPT_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.postgresql.fullnameOverride | quote }}
+                  key: password
+            - name: GOOGLE_MAPS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hospitopt.fullname" . }}-secrets
+                  key: GOOGLE_MAPS_API_KEY
+          volumeMounts:
+            - name: config
+              mountPath: /app/configs
+              readOnly: true
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "hospitopt.fullname" . }}-config
+            items:
+              - key: worker.yaml
+                path: worker.yaml
+{{- end }}

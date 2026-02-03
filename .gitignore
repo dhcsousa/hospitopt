@@ -191,6 +191,10 @@ cython_debug/
 # Ruff stuff:
 .ruff_cache/
 
+# Helm
+Chart.lock
+charts/hospitopt/charts/*.tgz
+
 # PyPI configuration file
 .pypirc
 

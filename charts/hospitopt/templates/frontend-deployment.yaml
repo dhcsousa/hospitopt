@@ -1,0 +1,50 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "hospitopt.fullname" . }}-frontend
+  labels:
+    {{- include "hospitopt.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: frontend
+      {{- include "hospitopt.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: frontend
+        {{- include "hospitopt.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: frontend
+          image: {{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000
+            - name: admin
+              containerPort: 8000
+          env:
+            - name: HOSPITOPT_API_URL
+              value: {{ default (printf "http://%s-api:8000" (include "hospitopt.fullname" .)) .Values.frontend.apiUrl | quote }}
+            - name: HOSPITOPT_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hospitopt.fullname" . }}-secrets
+                  key: HOSPITOPT_API_KEY
+            - name: REFLEX_ACCESS_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hospitopt.fullname" . }}-secrets
+                  key: REFLEX_ACCESS_TOKEN
+            - name: REFLEX_API_URL
+              value: "http://localhost:8001"
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+{{- end }}

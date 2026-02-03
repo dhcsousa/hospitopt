@@ -1,0 +1,17 @@
+{{- if .Values.api.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hospitopt.fullname" . }}-api
+  labels:
+    {{- include "hospitopt.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.api.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.api.service.port }}
+      targetPort: http
+  selector:
+    app.kubernetes.io/component: api
+    {{- include "hospitopt.selectorLabels" . | nindent 4 }}
+{{- end }}
