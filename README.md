@@ -4,6 +4,23 @@
 
 # HospitOPT
 
+## TL;DR
+
+- **What**: Microservices for emergency resource optimization (API + worker + dashboard).
+- **Stack**: FastAPI, Pyomo, PostgreSQL, Reflex.
+- **Deploy**: Docker Compose or Kubernetes (Helm chart included).
+- **Quick start**:
+  1. `uv sync --all-groups --all-packages`
+  2. `cp .env.example .env` and fill DB/API/Google Maps keys
+  3. `docker compose up -d db`
+  4. `alembic upgrade head`
+  5. `docker compose up -d`
+- **Run individually**:
+  - API: `uv run uvicorn hospitopt_api.main:app --reload`
+  - Worker: `uv run python packages/worker/src/hospitopt_worker/main.py`
+  - Frontend: `cd frontend && reflex run`
+- **Tests**: `uv run pytest`
+
 A Python-based optimization system that uses constraint programming to maximize the number of lives saved in emergency medical scenarios. The system models hospitals, available beds, ambulance positions, and patient needs, then computes optimized resource allocations to improve medical response and outcomes during mass casualty events.
 
 ![HospitOPT Demo](https://github.com/user-attachments/assets/11f9cd9f-84df-4abf-8f27-bc27bd5eda91)
@@ -139,7 +156,21 @@ uv run scripts/seed_db.py
 
 ### 4. Running the Services
 
-#### Option A: Kubernetes (Comming Soon)
+#### Option A: Kubernetes (Helm)
+
+This repo includes a Helm chart at [charts/hospitopt](charts/hospitopt). It deploys the API, worker, frontend, and a Bitnami PostgreSQL subchart.
+
+**Quick start:**
+```bash
+helm upgrade --install hospitopt charts/hospitopt \
+  -n hospitopt --create-namespace
+```
+
+**Notes:**
+- Configure secrets in [charts/hospitopt/values.yaml](charts/hospitopt/values.yaml) under `secrets` (API key, Google Maps key, etc.).
+- PostgreSQL credentials are managed by the Bitnami subchart via `postgresql.auth` in [charts/hospitopt/values.yaml](charts/hospitopt/values.yaml).
+- The DB hostname used by the services is `postgresql.fullnameOverride` (default: `hospitopt-postgresql`).
+- There is currently no dedicated migrations image for running Alembic in Kubernetes (this will be added soon). If you deploy via Helm, run migrations separately (e.g., using a one-off job or locally with port forwarding).
 
 #### Option B: Using Docker Compose (Recommended)
 
@@ -161,19 +192,19 @@ This starts:
 - Optimization worker (background)
 - Reflex frontend (port 3000)
 
+**Note:** There is currently no dedicated migrations image (this will be added soon). When using Docker Compose, run Alembic migrations separately (e.g., `alembic upgrade head`).
+
 #### Option C: Running Services Individually
 
 The `.vscode/launch.json` file includes configurations to run each service in debug mode.
 
 **API Server:**
 ```bash
-export API_CONFIG_FILE_PATH=configs/api.yaml
 uv run uvicorn hospitopt_api.main:app --reload
 ```
 
 **Optimization Worker:**
 ```bash
-export WORKER_CONFIG_FILE_PATH=configs/worker.yaml
 uv run python packages/worker/src/hospitopt_worker/main.py
 ```
 
@@ -203,6 +234,10 @@ The frontend will be available at `http://localhost:3000` and the API at `http:/
 All resource endpoints except `/health` require API key authentication via `Authorization: Bearer <API_KEY>` header.
 
 ## Development
+
+### Contributing Notes
+
+This project is intended to be extended. For example, the `DataIngestor` interface in the core package exists to make it easy to plug in additional data sources beyond PostgreSQL (e.g., message queues, external APIs, or file-based feeds).
 
 ### Running Tests
 
