@@ -1,0 +1,20 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hospitopt.fullname" . }}-frontend
+  labels:
+    {{- include "hospitopt.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.frontend.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.frontend.service.port }}
+      targetPort: http
+    - name: admin
+      port: {{ .Values.frontend.service.adminPort }}
+      targetPort: admin
+  selector:
+    app.kubernetes.io/component: frontend
+    {{- include "hospitopt.selectorLabels" . | nindent 4 }}
+{{- end }}
