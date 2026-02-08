@@ -3,6 +3,8 @@
 from abc import ABC, abstractmethod
 from typing import Callable, Sequence, TypeVar
 
+from httpx import AsyncClient
+from pydantic import HttpUrl, SecretStr
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing_extensions import AsyncContextManager
@@ -84,3 +86,21 @@ class SQLAlchemyIngestor(DataIngestor):
         async with self._session_factory() as session:
             result = await session.execute(query)
             return list(result.scalars().all())
+
+
+class APIIngestor(DataIngestor):
+
+    def __init__(self, host_url: HttpUrl, api_key: SecretStr) -> None:
+        self._httpx_async_client = AsyncClient(auth=api_key.get_secret_value(), base_url=host_url)
+
+    async def get_hospitals(self) -> Sequence[Hospital]:
+        response = await self._httpx_async_client.get("/hospitals")
+        raise NotImplementedError
+
+    async def get_patients(self) -> Sequence[Patient]:
+        response = await self._httpx_async_client.get("/patients")
+        raise NotImplementedError
+
+    async def get_ambulances(self) -> Sequence[Ambulance]:
+        response = await self._httpx_async_client.get("/ambulances")
+        raise NotImplementedError
