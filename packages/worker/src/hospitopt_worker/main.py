@@ -9,9 +9,10 @@ from collections.abc import Sequence
 from google.maps import routing_v2
 
 from hospitopt_core.config.env import Environment
-from hospitopt_core.db.ingest import APIIngestor, SQLAlchemyIngestor
 from hospitopt_core.domain.models import Ambulance, Hospital, Patient
 from hospitopt_worker.db import DatabaseWriter, check_connection
+from hospitopt_worker.ingestion import APIIngestor, SQLAlchemyIngestor
+from hospitopt_worker.ingestion.base import DataIngestor
 from hospitopt_worker.optimize import optimize_allocation
 from hospitopt_worker.settings import WorkerConfig
 
@@ -41,12 +42,13 @@ def _hash_inputs(
 
 async def run_worker() -> None:
     """Poll for input changes and run optimization when needed."""
+    ingestor: DataIngestor
     if config.ingestion.type == "db":
         ingestion_engine, ingestion_sessions = config.ingestion.to_engine_session_factory()
         await check_connection(ingestion_sessions)
         ingestor = SQLAlchemyIngestor(ingestion_sessions)
     elif config.ingestion.type == "api":
-        ingestor = APIIngestor(config.ingestion.host, config.ingestion.api_key)
+        ingestor = APIIngestor(host_url=config.ingestion.host, api_key=config.ingestion.api_key)
     else:
         raise ValueError(f"Unsupported ingestion type: {config.ingestion.type}")
 

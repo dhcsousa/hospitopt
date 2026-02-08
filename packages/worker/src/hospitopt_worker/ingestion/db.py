@@ -1,40 +1,16 @@
-"""Data ingestion interfaces for hospitals, patients, and ambulances."""
+"""Database ingestion for the worker runtime."""
 
-from abc import ABC, abstractmethod
-from typing import Callable, Sequence, TypeVar
+from collections.abc import Sequence
+from typing import TypeVar
 
-from httpx import AsyncClient
-from pydantic import HttpUrl, SecretStr
 from sqlalchemy import Select, select
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing_extensions import AsyncContextManager
 
 from hospitopt_core.db.models import AmbulanceDB, HospitalDB, PatientDB
 from hospitopt_core.domain.models import Ambulance, Hospital, Patient
-
-
-SessionFactory = Callable[[], AsyncContextManager[AsyncSession, None]]
+from hospitopt_worker.db import SessionFactory
+from hospitopt_worker.ingestion.base import DataIngestor
 
 ModelT = TypeVar("ModelT")
-
-
-class DataIngestor(ABC):
-    """Abstract interface for loading domain data."""
-
-    @abstractmethod
-    async def get_hospitals(self) -> Sequence[Hospital]:
-        """Return hospitals to be optimized."""
-        ...
-
-    @abstractmethod
-    async def get_patients(self) -> Sequence[Patient]:
-        """Return patients to be optimized."""
-        ...
-
-    @abstractmethod
-    async def get_ambulances(self) -> Sequence[Ambulance]:
-        """Return ambulances to be optimized."""
-        ...
 
 
 class SQLAlchemyIngestor(DataIngestor):
@@ -86,21 +62,3 @@ class SQLAlchemyIngestor(DataIngestor):
         async with self._session_factory() as session:
             result = await session.execute(query)
             return list(result.scalars().all())
-
-
-class APIIngestor(DataIngestor):
-
-    def __init__(self, host_url: HttpUrl, api_key: SecretStr) -> None:
-        self._httpx_async_client = AsyncClient(auth=api_key.get_secret_value(), base_url=host_url)
-
-    async def get_hospitals(self) -> Sequence[Hospital]:
-        response = await self._httpx_async_client.get("/hospitals")
-        raise NotImplementedError
-
-    async def get_patients(self) -> Sequence[Patient]:
-        response = await self._httpx_async_client.get("/patients")
-        raise NotImplementedError
-
-    async def get_ambulances(self) -> Sequence[Ambulance]:
-        response = await self._httpx_async_client.get("/ambulances")
-        raise NotImplementedError
