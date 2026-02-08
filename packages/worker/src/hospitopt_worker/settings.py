@@ -1,13 +1,25 @@
 """Worker application settings."""
 
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import ConfigDict, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Discriminator, Field, HttpUrl, SecretStr
 from hospitopt_core.config.settings import BaseAppConfig, DbConnectionConfig, FromEnv
 
 
-class IngestionConfig(DbConnectionConfig):
-    type: Literal["db"] = Field("db", description="Ingestion backend type.")
+class APIIngestion(BaseModel):
+    type: Literal["api"] = "api"
+    host: HttpUrl
+    api_key: SecretStr
+
+
+class DBIngestion(DbConnectionConfig):
+    type: Literal["db"] = "db"
+
+
+type IngestionConfig = Annotated[
+    DBIngestion | APIIngestion,
+    Discriminator("type"),
+]
 
 
 class WorkerConfig(BaseAppConfig):

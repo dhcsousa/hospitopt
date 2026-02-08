@@ -1,6 +1,6 @@
 [project]
 name = "hospitopt"
-version = "0.1.0"
+version = "0.2.0"
 description = "Solution to optimize hospital-patient allocation."
 readme = "README.md"
 requires-python = ">=3.14"

@@ -738,7 +738,7 @@ wheels = [
 
 [[package]]
 name = "hospitopt"
-version = "0.1.0"
+version = "0.2.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]
@@ -793,7 +793,7 @@ frontend = [
 
 [[package]]
 name = "hospitopt-api"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/api" }
 dependencies = [
     { name = "fastapi" },
@@ -810,7 +810,7 @@ requires-dist = [
 
 [[package]]
 name = "hospitopt-core"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/core" }
 dependencies = [
     { name = "alembic" },
@@ -837,7 +837,7 @@ requires-dist = [
 
 [[package]]
 name = "hospitopt-worker"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "packages/worker" }
 dependencies = [
     { name = "google-maps-routing" },
