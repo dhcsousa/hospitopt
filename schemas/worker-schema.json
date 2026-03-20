@@ -1,5 +1,88 @@
 {
   "$defs": {
+    "APIIngestion": {
+      "properties": {
+        "type": {
+          "const": "api",
+          "default": "api",
+          "title": "Type",
+          "type": "string"
+        },
+        "host": {
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "title": "Host",
+          "type": "string"
+        },
+        "api_key": {
+          "format": "password",
+          "title": "Api Key",
+          "type": "string",
+          "writeOnly": true
+        },
+        "endpoints": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Endpoints",
+          "type": "object"
+        }
+      },
+      "required": [
+        "host",
+        "api_key",
+        "endpoints"
+      ],
+      "title": "APIIngestion",
+      "type": "object"
+    },
+    "DBIngestion": {
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "$ref": "#/$defs/FromEnv_str_",
+          "description": "Database hostname."
+        },
+        "port": {
+          "$ref": "#/$defs/FromEnv_int_",
+          "default": 5432,
+          "description": "Database port, defaults to 5432."
+        },
+        "database": {
+          "$ref": "#/$defs/FromEnv_str_",
+          "description": "Database name."
+        },
+        "user": {
+          "$ref": "#/$defs/FromEnv_str_",
+          "description": "User name to use for connection."
+        },
+        "password": {
+          "$ref": "#/$defs/FromEnv_SecretStr_",
+          "description": "Password to use for connection."
+        },
+        "pool_size": {
+          "default": 10,
+          "description": "Connection pool size.",
+          "title": "Pool Size",
+          "type": "integer"
+        },
+        "type": {
+          "const": "db",
+          "default": "db",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "host",
+        "database",
+        "user",
+        "password"
+      ],
+      "title": "DBIngestion",
+      "type": "object"
+    },
     "DbConnectionConfig": {
       "additionalProperties": false,
       "properties": {
@@ -55,51 +138,21 @@
       "type": "string"
     },
     "IngestionConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "host": {
-          "$ref": "#/$defs/FromEnv_str_",
-          "description": "Database hostname."
+      "discriminator": {
+        "mapping": {
+          "api": "#/$defs/APIIngestion",
+          "db": "#/$defs/DBIngestion"
         },
-        "port": {
-          "$ref": "#/$defs/FromEnv_int_",
-          "default": 5432,
-          "description": "Database port, defaults to 5432."
-        },
-        "database": {
-          "$ref": "#/$defs/FromEnv_str_",
-          "description": "Database name."
-        },
-        "user": {
-          "$ref": "#/$defs/FromEnv_str_",
-          "description": "User name to use for connection."
-        },
-        "password": {
-          "$ref": "#/$defs/FromEnv_SecretStr_",
-          "description": "Password to use for connection."
-        },
-        "pool_size": {
-          "default": 10,
-          "description": "Connection pool size.",
-          "title": "Pool Size",
-          "type": "integer"
-        },
-        "type": {
-          "const": "db",
-          "default": "db",
-          "description": "Ingestion backend type.",
-          "title": "Type",
-          "type": "string"
-        }
+        "propertyName": "type"
       },
-      "required": [
-        "host",
-        "database",
-        "user",
-        "password"
-      ],
-      "title": "IngestionConfig",
-      "type": "object"
+      "oneOf": [
+        {
+          "$ref": "#/$defs/DBIngestion"
+        },
+        {
+          "$ref": "#/$defs/APIIngestion"
+        }
+      ]
     },
     "LoggingConfig": {
       "description": "Logging configuration with production-grade defaults.",

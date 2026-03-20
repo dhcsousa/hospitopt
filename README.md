@@ -4,22 +4,26 @@
 
 # HospitOPT
 
+This repo includes a Justfile for common tasks. If you have [`just`](https://github.com/casey/just) installed, use the recipes below (or run `just --list`).
+
 ## TL;DR
 
 - **What**: Microservices for emergency resource optimization (API + worker + dashboard).
 - **Stack**: FastAPI, Pyomo, PostgreSQL, Reflex.
 - **Deploy**: Docker Compose or Kubernetes (Helm chart included).
 - **Quick start**:
-  1. `uv sync --all-groups --all-packages`
+  1. `just sync`
   2. `cp .env.example .env` and fill DB/API/Google Maps keys
   3. `docker compose up -d db`
-  4. `alembic upgrade head`
+  4. `just migrate`
   5. `docker compose up -d`
 - **Run individually**:
-  - API: `uv run uvicorn hospitopt_api.main:app --reload`
-  - Worker: `uv run python packages/worker/src/hospitopt_worker/main.py`
-  - Frontend: `cd frontend && reflex run`
-- **Tests**: `uv run pytest`
+  - Use the VS Code launch configs in `.vscode/launch.json`
+  - Or run via Just:
+    - API: `just api`
+    - Worker: `just worker`
+    - Frontend: `just frontend`
+- **Tests**: `just test`
 
 A Python-based optimization system that uses constraint programming to maximize the number of lives saved in emergency medical scenarios. The system models hospitals, available beds, ambulance positions, and patient needs, then computes optimized resource allocations to improve medical response and outcomes during mass casualty events.
 
@@ -116,7 +120,7 @@ sudo apt-get install glpk-utils
 This project uses `uv` to manage Python dependencies and workspaces.
 
 ```bash
-uv sync --all-groups --all-packages
+just sync
 ```
 
 This creates a virtual environment and installs all dependencies from the workspace packages (api, worker, core) and development tools.
@@ -145,7 +149,7 @@ docker compose up -d db
 Wait for the database to be ready, then run migrations:
 
 ```bash
-alembic upgrade head
+just migrate
 ```
 
 (Optional) Seed the database with sample data:
@@ -200,18 +204,17 @@ The `.vscode/launch.json` file includes configurations to run each service in de
 
 **API Server:**
 ```bash
-uv run uvicorn hospitopt_api.main:app --reload
+just api
 ```
 
 **Optimization Worker:**
 ```bash
-uv run python packages/worker/src/hospitopt_worker/main.py
+just worker
 ```
 
 **Frontend Dashboard:**
 ```bash
-cd frontend
-reflex run
+just frontend
 ```
 
 The frontend will be available at `http://localhost:3000` and the API at `http://localhost:8000` by default.
@@ -235,6 +238,19 @@ All resource endpoints except `/health` require API key authentication via `Auth
 
 ## Development
 
+### Justfile Recipes (Summary)
+
+For convenience, here are the most common `just` recipes used in this repo:
+
+- `just sync` to install workspace dependencies
+- `just api`, `just worker`, `just frontend` to run services individually
+- `just test` to run the test suite
+- `just bump <step>` to bump versions (e.g. `patch`, `minor`, `major`)
+
+Use `just --list` to see all available recipes. Most IDEs can invoke these recipes through their task runners once `just` is installed.
+
+Docker Compose is run directly via `docker compose up -d` (and `docker compose up -d --build` if you need to build locally).
+
 ### Contributing Notes
 
 This project is intended to be extended. For example, the `DataIngestor` interface in the core package exists to make it easy to plug in additional data sources beyond PostgreSQL (e.g., message queues, external APIs, or file-based feeds).
@@ -242,12 +258,14 @@ This project is intended to be extended. For example, the `DataIngestor` interfa
 ### Running Tests
 
 ```bash
-uv run pytest
+just test
 ```
 
 This runs the full test suite with coverage reporting (minimum 90% required).
 
 ### Pre-commit Hooks
+
+`just sync` will install the hooks if they are not already present. To run manually:
 
 ```bash
 uv run pre-commit install

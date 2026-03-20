@@ -1,6 +1,6 @@
 [project]
 name = "hospitopt-core"
-version = "0.1.0"
+version = "0.2.0"
 description = "Core domain models, database, and configuration for hospitopt"
 readme = "README.md"
 authors = [

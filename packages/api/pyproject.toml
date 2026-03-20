@@ -1,6 +1,6 @@
 [project]
 name = "hospitopt-api"
-version = "0.1.0"
+version = "0.2.0"
 description = "FastAPI REST API for hospitopt"
 readme = "README.md"
 authors = [
