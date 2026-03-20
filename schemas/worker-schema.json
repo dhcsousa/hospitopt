@@ -20,19 +20,11 @@
           "title": "Api Key",
           "type": "string",
           "writeOnly": true
-        },
-        "endpoints": {
-          "additionalProperties": {
-            "type": "string"
-          },
-          "title": "Endpoints",
-          "type": "object"
         }
       },
       "required": [
         "host",
-        "api_key",
-        "endpoints"
+        "api_key"
       ],
       "title": "APIIngestion",
       "type": "object"

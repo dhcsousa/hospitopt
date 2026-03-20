@@ -1,5 +1,48 @@
 {
   "$defs": {
+    "AgentConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "default": "qwen3.5:27b",
+          "description": "PydanticAI model identifier (e.g. 'qwen3.5:27b').",
+          "title": "Model",
+          "type": "string"
+        },
+        "api_key": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FromEnv_SecretStr_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "API key for the LLM provider. Required for OpenAI, not needed for Ollama."
+        },
+        "base_url": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FromEnv_str_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Custom base URL for the LLM provider (e.g. 'http://localhost:11434/v1' for Ollama)."
+        },
+        "system_prompt": {
+          "default": "You are the AI Incident Commander Assistant for HospitOPT, an emergency medical resource optimization system used during mass casualty events (MCEs).\n\nYour role:\n- Provide clear, actionable intelligence to emergency coordinators.\n- Summarize the current situation when asked (SITREP format).\n- Identify critical patients who are running out of time.\n- Flag hospitals nearing capacity.\n- Recommend actions based on real-time data.\n\nYou have access to tools that query live operational data. Use them to answer questions accurately. Always cite numbers from the data \u2014 never guess.\n\nWhen generating a SITREP, use this format:\n  SITREP \u2014 [timestamp]\n  1. SITUATION: Overall summary\n  2. PATIENTS: Total, assigned, unassigned, urgent\n  3. HOSPITALS: Capacity status, which are near full\n  4. AMBULANCES: Deployed vs idle\n  5. CRITICAL: Patients with <5 min deadline slack\n  6. RECOMMENDATIONS: Actionable next steps\n\nBe concise, direct, and professional \u2014 like a military operations briefing.\n",
+          "description": "System prompt for the incident commander agent.",
+          "title": "System Prompt",
+          "type": "string"
+        }
+      },
+      "title": "AgentConfig",
+      "type": "object"
+    },
     "CorsConfig": {
       "additionalProperties": false,
       "properties": {
@@ -152,6 +195,10 @@
     "cors": {
       "$ref": "#/$defs/CorsConfig",
       "description": "CORS configuration."
+    },
+    "agent": {
+      "$ref": "#/$defs/AgentConfig",
+      "description": "Agent configuration."
     }
   },
   "required": [
