@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from hospitopt_api.agent import create_chat_agent, create_sitrep_agent
 from hospitopt_api.routes import ambulances, assignments, health, hospitals, patients
 from hospitopt_core.config.env import Environment
 
@@ -27,6 +28,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # pragma: no cover
     app.state.engine = engine
     app.state.session_factory = session_factory
     app.state.config = config
+    app.state.sitrep_agent = create_sitrep_agent(config.agents.sitrep)
+    app.state.chat_agent = create_chat_agent(config.agents.chat)
 
     try:
         yield

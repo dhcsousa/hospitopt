@@ -14,7 +14,7 @@ class CorsConfig(BaseModel):
     allow_headers: list[str] = Field(default_factory=lambda: ["*"], description="Allowed headers.")
 
 
-DEFAULT_SYSTEM_PROMPT = (
+DEFAULT_SITREP_PROMPT = (
     "You are the AI Incident Commander Assistant for HospitOPT, an emergency medical "
     "resource optimization system used during mass casualty events (MCEs).\n"
     "\n"
@@ -40,6 +40,22 @@ DEFAULT_SYSTEM_PROMPT = (
     "Be concise, direct, and professional — like a military operations briefing.\n"
 )
 
+DEFAULT_CHAT_PROMPT = (
+    "You are the HospitOPT Chat Assistant embedded in the operations dashboard.\n"
+    "\n"
+    "The user is an emergency coordinator viewing a specific screen in the dashboard.\n"
+    "Each message includes a JSON context snapshot of what is currently visible on screen "
+    "(e.g. map markers, assignment rows, metrics).\n"
+    "\n"
+    "Your job:\n"
+    "- Answer questions about the data the user is looking at.\n"
+    "- Explain what values mean (e.g. deadline slack, urgent transport flag).\n"
+    "- Highlight anomalies or concerns visible in the context.\n"
+    "- Keep answers short and relevant to the current view.\n"
+    "\n"
+    "Do NOT make up data. If the answer is not in the provided context, say so.\n"
+)
+
 
 class AgentConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -48,11 +64,22 @@ class AgentConfig(BaseModel):
     api_key: FromEnv[SecretStr] | None = Field(
         None, description="API key for the LLM provider. Required for OpenAI, not needed for Ollama."
     )
-    base_url: FromEnv[str] | None = Field(
-        None, description="Custom base URL for the LLM provider (e.g. 'http://localhost:11434/v1' for Ollama)."
+    base_url: HttpUrl = Field(
+        None, description="Base URL for the LLM provider (e.g. 'http://localhost:11434/v1' for Ollama)."
     )
-    system_prompt: str = Field(
-        default=DEFAULT_SYSTEM_PROMPT, description="System prompt for the incident commander agent."
+    system_prompt: str = Field(description="System prompt for the agent.")
+
+
+class AgentsConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sitrep: AgentConfig = Field(
+        default_factory=lambda: AgentConfig(system_prompt=DEFAULT_SITREP_PROMPT),
+        description="SITREP agent configuration.",
+    )
+    chat: AgentConfig = Field(
+        default_factory=lambda: AgentConfig(system_prompt=DEFAULT_CHAT_PROMPT),
+        description="Chat Q&A agent configuration.",
     )
 
 
@@ -61,4 +88,4 @@ class APIConfig(BaseAppConfig):
 
     api_key: FromEnv[SecretStr] = Field(description="API key for authentication.")
     cors: CorsConfig = Field(default_factory=CorsConfig, description="CORS configuration.")
-    agent: AgentConfig = Field(default_factory=AgentConfig, description="Agent configuration.")
+    agents: AgentsConfig = Field(default_factory=AgentsConfig, description="Agent configurations.")
