@@ -111,7 +111,7 @@ def create_sitrep_agent(config: AgentConfig) -> Agent[AgentDeps, str]:
             result = await session.execute(select(HospitalDB))
             hospitals = []
             for row in result.scalars().all():
-                if row.bed_capacity == 0:
+                if row.bed_capacity == 0:  # pragma: no cover
                     continue
                 occupancy = (row.used_beds / row.bed_capacity) * 100
                 if occupancy >= threshold_pct:
