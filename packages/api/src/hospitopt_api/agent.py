@@ -17,6 +17,7 @@ from hospitopt_api.models import (
     AmbulanceStatusInfo,
     CriticalPatientInfo,
     HospitalCapacityInfo,
+    SitrepReport,
     SituationSummary,
     UnassignedPatientInfo,
 )
@@ -38,18 +39,19 @@ class AgentDeps:
 
 def _make_model(config: AgentConfig) -> OpenAIResponsesModel:
     provider = OpenAIProvider(
-        base_url=str(config.base_url),
+        base_url=str(config.base_url) if config.base_url else None,
         api_key=config.api_key.get_secret_value() if config.api_key else None,
     )
     return OpenAIResponsesModel(config.model, provider=provider)
 
 
-def create_sitrep_agent(config: AgentConfig) -> Agent[AgentDeps, str]:
-    """Create the SITREP agent that queries live data and generates situation reports."""
-    agent: Agent[AgentDeps, str] = Agent(
+def create_sitrep_agent(config: AgentConfig) -> Agent[AgentDeps, SitrepReport]:
+    """Create the SITREP agent that queries live data and generates structured situation reports."""
+    agent: Agent[AgentDeps, SitrepReport] = Agent(
         model=_make_model(config),
         system_prompt=config.system_prompt,
         deps_type=AgentDeps,
+        output_type=SitrepReport,
     )
 
     @agent.tool

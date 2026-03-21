@@ -1,10 +1,12 @@
 import reflex as rx
 
 from frontend.components.assignments_panel import assignments_panel
+from frontend.components.chat_widget import chat_widget
 from frontend.components.header import header
 from frontend.components.map_view import map_view
 from frontend.components.metric_card import metric_card
 from frontend.components.sidebar import sidebar
+from frontend.components.sitrep_panel import sitrep_panel
 from frontend.states.dashboard_state import DashboardState
 
 
@@ -55,7 +57,17 @@ def index() -> rx.Component:
                 rx.cond(
                     DashboardState.selected_tab == "map",
                     map_panel(),
-                    assignments_panel(),
+                    rx.cond(
+                        DashboardState.selected_tab == "table",
+                        assignments_panel(),
+                        sitrep_panel(),
+                    ),
+                ),
+                # Chat widget available on map & assignments tabs
+                rx.cond(
+                    DashboardState.selected_tab != "sitrep",
+                    chat_widget(),
+                    rx.fragment(),
                 ),
                 class_name="mx-auto w-full max-w-6xl flex flex-col space-y-4 p-6 h-[calc(100vh-2rem)] overflow-hidden",
             ),

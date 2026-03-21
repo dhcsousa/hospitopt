@@ -8,9 +8,9 @@ from pydantic_ai import models
 from pydantic_ai.models.test import TestModel
 from sqlalchemy import delete
 
-from pydantic import SecretStr
 
 from hospitopt_api.agent import AgentDeps, create_sitrep_agent
+from hospitopt_api.models import SitrepReport
 from hospitopt_api.settings import AgentConfig, DEFAULT_SITREP_PROMPT
 from hospitopt_core.db.models import AmbulanceDB, HospitalDB, PatientAssignmentDB, PatientDB
 
@@ -19,8 +19,9 @@ models.ALLOW_MODEL_REQUESTS = False
 
 def _sitrep_config() -> AgentConfig:
     return AgentConfig(
+        model="test-model",
+        base_url="http://localhost:11434/v1",
         system_prompt=DEFAULT_SITREP_PROMPT,
-        api_key=SecretStr("test-key"),
     )
 
 
@@ -33,7 +34,7 @@ async def test_sitrep_agent_empty_db(session_factory):
     with agent.override(model=TestModel(call_tools="all")):
         result = await agent.run("Give me a SITREP", deps=deps)
 
-    assert isinstance(result.output, str)
+    assert isinstance(result.output, SitrepReport)
 
 
 @pytest.mark.asyncio
@@ -66,7 +67,7 @@ async def test_sitrep_agent_with_data(async_session, session_factory):
     with agent.override(model=TestModel(call_tools="all")):
         result = await agent.run("Give me a SITREP", deps=deps)
 
-    assert isinstance(result.output, str)
+    assert isinstance(result.output, SitrepReport)
 
     # Clean up committed rows so subsequent tests start with a clean DB.
     await async_session.execute(delete(PatientAssignmentDB))

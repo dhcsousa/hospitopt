@@ -4,7 +4,6 @@ import pytest
 from pydantic_ai import models
 from pydantic_ai.models.test import TestModel
 
-from pydantic import SecretStr
 
 from hospitopt_api.agent import create_chat_agent, create_sitrep_agent
 from hospitopt_api.settings import AgentConfig, DEFAULT_CHAT_PROMPT, DEFAULT_SITREP_PROMPT
@@ -14,15 +13,17 @@ models.ALLOW_MODEL_REQUESTS = False
 
 def _sitrep_config() -> AgentConfig:
     return AgentConfig(
+        model="test-model",
+        base_url="http://localhost:11434/v1",
         system_prompt=DEFAULT_SITREP_PROMPT,
-        api_key=SecretStr("test-key"),
     )
 
 
 def _chat_config() -> AgentConfig:
     return AgentConfig(
+        model="test-model",
+        base_url="http://localhost:11434/v1",
         system_prompt=DEFAULT_CHAT_PROMPT,
-        api_key=SecretStr("test-key"),
     )
 
 

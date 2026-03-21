@@ -1,6 +1,6 @@
 """API pydantic data models."""
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from hospitopt_core.domain.models import Ambulance, Hospital, Patient, PatientAssignment
 
 
@@ -76,3 +76,29 @@ class AmbulanceStatusInfo(BaseModel):
     deployed: int
     idle: int
     utilization_pct: float
+
+
+class SitrepReport(BaseModel):
+    """Structured situation report returned by the SITREP agent."""
+
+    patient_overview: str = Field(
+        description="Markdown summary of patient counts: total, assigned, unassigned, and urgent."
+    )
+    hospital_capacity: str = Field(
+        description="Markdown summary of hospital bed capacity, occupancy, and which hospitals are near full."
+    )
+    ambulance_fleet_status: str = Field(
+        description="Markdown summary of ambulance deployment: total, deployed, idle, utilization."
+    )
+    critical_patients: str = Field(
+        description="Markdown section listing patients with deadline slack <= 5 minutes. "
+        "Include patient ID, slack, deadline, and assignment status."
+    )
+    unassigned_patients: str = Field(
+        description="Markdown section listing patients that require urgent transport "
+        "(no timely hospital/ambulance assignment). Include patient ID and deadline."
+    )
+    action_required: str = Field(
+        description="Actionable recommendations for the emergency coordinator based on the data."
+    )
+    summary: str = Field(description="A concise 2-3 sentence overall situation summary.")

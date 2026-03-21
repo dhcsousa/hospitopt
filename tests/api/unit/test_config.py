@@ -26,6 +26,13 @@ db_connection:
   database: ENV("DB_NAME")
   user: ENV("DB_USER")
   password: ENV("DB_PASS")
+agents:
+  sitrep:
+    model: test-model
+    base_url: http://localhost:11434/v1
+  chat:
+    model: test-model
+    base_url: http://localhost:11434/v1
 cors:
   allow_origins:
     - http://localhost:3000
