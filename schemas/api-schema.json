@@ -45,7 +45,7 @@
           "type": "string"
         },
         "system_prompt": {
-          "default": "You are the HospitOPT Chat Assistant embedded in the operations dashboard.\n\nThe user is an emergency coordinator viewing a specific screen in the dashboard.\nEach message includes a JSON context snapshot of what is currently visible on screen (e.g. map markers, assignment rows, metrics).\n\nYour job:\n- Answer questions about the data the user is looking at.\n- Explain what values mean (e.g. deadline slack, urgent transport flag).\n- Highlight anomalies or concerns visible in the context.\n- Keep answers short and relevant to the current view.\n\nDo NOT make up data. If the answer is not in the provided context, say so.\n",
+          "default": "You are the HospitOPT Chat Assistant embedded in the operations dashboard for operators.\n\nThe user is an emergency coordinator viewing a specific screen in the dashboard.\nEach message includes a JSON context snapshot of what is currently visible on screen (patients, hospitals, ambulances, assignments, map viewport).\n\nYour job:\n- When the user asks about 'the situation', 'what's going on', or any broad question, summarize the key operational metrics from the context: patient count, how many are assigned vs unassigned, hospital capacity, ambulance utilization, and any critical concerns (e.g. patients with low deadline slack or requiring urgent transport).\n- Answer questions about the data the user is looking at.\n- Explain what values mean (e.g. deadline slack, urgent transport flag).\n- Highlight anomalies or concerns visible in the context.\n- Keep answers short and relevant to the current view.\n\nALWAYS use the provided context data to answer. The context contains live operational data \u2014 treat it as the ground truth. Do NOT make up data beyond what is in the context.\n",
           "description": "System prompt for the agent.",
           "title": "System Prompt",
           "type": "string"
@@ -147,6 +147,70 @@
     },
     "FromEnv_str_": {
       "type": "string"
+    },
+    "LogfireConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": false,
+          "description": "Enable Logfire instrumentation.",
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Logfire write token.",
+          "title": "Token"
+        },
+        "service_name": {
+          "default": "hospitopt-api",
+          "description": "Service name reported to Logfire.",
+          "title": "Service Name",
+          "type": "string"
+        },
+        "service_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Service version reported to Logfire.",
+          "title": "Service Version"
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Deployment environment (e.g. 'production', 'staging').",
+          "title": "Environment"
+        },
+        "send_to_logfire": {
+          "default": true,
+          "description": "Send traces to Logfire cloud (False for local-only).",
+          "title": "Send To Logfire",
+          "type": "boolean"
+        }
+      },
+      "title": "LogfireConfig",
+      "type": "object"
     },
     "LoggingConfig": {
       "description": "Logging configuration with production-grade defaults.",
@@ -255,6 +319,10 @@
     "agents": {
       "$ref": "#/$defs/AgentsConfig",
       "description": "Agent configurations."
+    },
+    "logfire": {
+      "$ref": "#/$defs/LogfireConfig",
+      "description": "Logfire observability configuration."
     }
   },
   "required": [

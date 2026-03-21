@@ -17,6 +17,10 @@ agents:
     model: qwen3:8b
     base_url: http://localhost:11434/v1
 
+logfire:
+  enabled: true
+  service_name: hospitopt
+
 cors:
   allow_origins:
     - http://localhost:3000

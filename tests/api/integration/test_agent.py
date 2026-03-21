@@ -9,7 +9,7 @@ from pydantic_ai.models.test import TestModel
 from sqlalchemy import delete
 
 
-from hospitopt_api.agent import AgentDeps, create_sitrep_agent
+from hospitopt_api.agent import SITREPDeps, create_sitrep_agent
 from hospitopt_api.models import SitrepReport
 from hospitopt_api.settings import AgentConfig, DEFAULT_SITREP_PROMPT
 from hospitopt_core.db.models import AmbulanceDB, HospitalDB, PatientAssignmentDB, PatientDB
@@ -29,7 +29,7 @@ def _sitrep_config() -> AgentConfig:
 async def test_sitrep_agent_empty_db(session_factory):
     """On an empty DB the agent should still run and call all tools."""
     agent = create_sitrep_agent(_sitrep_config())
-    deps = AgentDeps(session_factory=session_factory)
+    deps = SITREPDeps(session_factory=session_factory)
 
     with agent.override(model=TestModel(call_tools="all")):
         result = await agent.run("Give me a SITREP", deps=deps)
@@ -62,7 +62,7 @@ async def test_sitrep_agent_with_data(async_session, session_factory):
     await async_session.commit()
 
     agent = create_sitrep_agent(_sitrep_config())
-    deps = AgentDeps(session_factory=session_factory)
+    deps = SITREPDeps(session_factory=session_factory)
 
     with agent.override(model=TestModel(call_tools="all")):
         result = await agent.run("Give me a SITREP", deps=deps)

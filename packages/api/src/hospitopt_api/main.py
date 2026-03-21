@@ -25,6 +25,18 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # pragma: no cover
     """Manage app lifespan - setup and teardown."""
     config.logging.setup_logging(level=env.LOG_LEVEL)
 
+    if config.logfire.enabled:
+        import logfire
+
+        logfire.configure(
+            token=config.logfire.token,
+            service_name=config.logfire.service_name,
+            service_version=config.logfire.service_version,
+            environment=config.logfire.environment,
+            send_to_logfire=config.logfire.send_to_logfire,
+        )
+        logfire.instrument_pydantic_ai()
+
     engine, session_factory = config.db_connection.to_engine_session_factory()
     app.state.engine = engine
     app.state.session_factory = session_factory

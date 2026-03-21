@@ -5,9 +5,13 @@ import os
 import uuid
 from collections.abc import AsyncGenerator
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 import httpx
 import reflex as rx
+
+if TYPE_CHECKING:
+    from frontend.states.dashboard_state import DashboardState
 
 API_BASE_URL = os.getenv("HOSPITOPT_API_URL", "").rstrip("/")
 API_KEY = os.getenv("HOSPITOPT_API_KEY", "")
@@ -24,7 +28,10 @@ SITREP_SECTIONS: list[tuple[str, str, str]] = [
 ]
 
 
-def _make_run_input(messages: list[dict[str, str]]) -> dict[str, object]:
+def _make_run_input(
+    messages: list[dict[str, str]],
+    context: list[dict[str, str]] | None = None,
+) -> dict[str, object]:
     """Build an ag-ui RunAgentInput payload."""
     return {
         "threadId": str(uuid.uuid4()),
@@ -32,7 +39,7 @@ def _make_run_input(messages: list[dict[str, str]]) -> dict[str, object]:
         "state": None,
         "messages": [{"id": str(uuid.uuid4()), "role": m["role"], "content": m["content"]} for m in messages],
         "tools": [],
-        "context": [],
+        "context": context or [],
         "forwardedProps": {},
     }
 
@@ -43,6 +50,27 @@ def _headers() -> dict[str, str]:
         "Accept": "text/event-stream",
         "Content-Type": "application/json",
     }
+
+
+def _build_screen_context(dashboard: DashboardState) -> list[dict[str, str]]:
+    """Build ag-ui Context entries from visible dashboard data."""
+    return [
+        {"description": "active_view", "value": dashboard.selected_tab},
+        {
+            "description": "map_viewport",
+            "value": json.dumps(
+                {
+                    "center_lat": dashboard.map_center_lat,
+                    "center_lon": dashboard.map_center_lon,
+                    "zoom": dashboard.map_zoom,
+                }
+            ),
+        },
+        {"description": "patients", "value": json.dumps(dashboard.patients)},
+        {"description": "hospitals", "value": json.dumps(dashboard.hospitals)},
+        {"description": "ambulances", "value": json.dumps(dashboard.ambulances)},
+        {"description": "assignments", "value": json.dumps(dashboard.assignments)},
+    ]
 
 
 async def _iter_text_deltas(
@@ -167,10 +195,16 @@ class AgentState(rx.State):
         self.chat_processing = True
         yield
 
-        # Build message history for the agent (skip the empty placeholder)
+        # Gather current dashboard state so the agent knows what the user sees.
+        from frontend.states.dashboard_state import DashboardState
+
+        dashboard = await self.get_state(DashboardState)
+        screen_context = _build_screen_context(dashboard)
+
+        # Build message history for the agent (skip the empty placeholder).
         ag_messages = [m for m in self._chat_history if m["content"]]
 
-        run_input = _make_run_input(ag_messages)
+        run_input = _make_run_input(ag_messages, context=screen_context)
 
         try:
             async with httpx.AsyncClient(timeout=600.0) as client:

@@ -1,5 +1,7 @@
 """API pydantic data models."""
 
+import json
+
 from pydantic import BaseModel, Field
 from hospitopt_core.domain.models import Ambulance, Hospital, Patient, PatientAssignment
 
@@ -102,3 +104,25 @@ class SitrepReport(BaseModel):
         description="Actionable recommendations for the emergency coordinator based on the data."
     )
     summary: str = Field(description="A concise 2-3 sentence overall situation summary.")
+
+
+class ScreenContext(BaseModel):
+    """Parsed dashboard context sent by the frontend via ag-ui."""
+
+    active_view: str = "map"
+    patients: list[Patient] = []
+    hospitals: list[Hospital] = []
+    ambulances: list[Ambulance] = []
+    assignments: list[PatientAssignment] = []
+
+    @classmethod
+    def from_ag_ui(cls, context_entries: list[dict[str, str]]) -> "ScreenContext":
+        """Build from ag-ui RunAgentInput.context entries."""
+        mapping = {c["description"]: c["value"] for c in context_entries}
+        return ScreenContext(
+            active_view=mapping.get("active_view", "map"),
+            patients=[Patient(**p) for p in json.loads(mapping.get("patients", "[]"))],
+            hospitals=[Hospital(**h) for h in json.loads(mapping.get("hospitals", "[]"))],
+            ambulances=[Ambulance(**a) for a in json.loads(mapping.get("ambulances", "[]"))],
+            assignments=[PatientAssignment(**a) for a in json.loads(mapping.get("assignments", "[]"))],
+        )

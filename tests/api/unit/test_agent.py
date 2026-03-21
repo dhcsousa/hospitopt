@@ -5,7 +5,7 @@ from pydantic_ai import models
 from pydantic_ai.models.test import TestModel
 
 
-from hospitopt_api.agent import create_chat_agent, create_sitrep_agent
+from hospitopt_api.agent import ChatDeps, create_chat_agent, create_sitrep_agent
 from hospitopt_api.settings import AgentConfig, DEFAULT_CHAT_PROMPT, DEFAULT_SITREP_PROMPT
 
 models.ALLOW_MODEL_REQUESTS = False
@@ -47,8 +47,9 @@ def test_create_chat_agent_returns_agent():
 @pytest.mark.asyncio
 async def test_chat_agent_responds():
     agent = create_chat_agent(_chat_config())
+    deps = ChatDeps(screen_context='{"patients": []}')
 
     with agent.override(model=TestModel()):
-        result = await agent.run("What does deadline slack mean?")
+        result = await agent.run("What does deadline slack mean?", deps=deps)
 
     assert isinstance(result.output, str)

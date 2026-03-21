@@ -45,20 +45,36 @@ DEFAULT_SITREP_PROMPT = (
 )
 
 DEFAULT_CHAT_PROMPT = (
-    "You are the HospitOPT Chat Assistant embedded in the operations dashboard.\n"
+    "You are the HospitOPT Chat Assistant embedded in the operations dashboard for operators.\n"
     "\n"
     "The user is an emergency coordinator viewing a specific screen in the dashboard.\n"
     "Each message includes a JSON context snapshot of what is currently visible on screen "
-    "(e.g. map markers, assignment rows, metrics).\n"
+    "(patients, hospitals, ambulances, assignments, map viewport).\n"
     "\n"
     "Your job:\n"
+    "- When the user asks about 'the situation', 'what's going on', or any broad question, "
+    "summarize the key operational metrics from the context: patient count, how many are "
+    "assigned vs unassigned, hospital capacity, ambulance utilization, and any critical "
+    "concerns (e.g. patients with low deadline slack or requiring urgent transport).\n"
     "- Answer questions about the data the user is looking at.\n"
     "- Explain what values mean (e.g. deadline slack, urgent transport flag).\n"
     "- Highlight anomalies or concerns visible in the context.\n"
     "- Keep answers short and relevant to the current view.\n"
     "\n"
-    "Do NOT make up data. If the answer is not in the provided context, say so.\n"
+    "ALWAYS use the provided context data to answer. The context contains live operational "
+    "data — treat it as the ground truth. Do NOT make up data beyond what is in the context.\n"
 )
+
+
+class LogfireConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = Field(False, description="Enable Logfire instrumentation.")
+    token: str | None = Field(None, description="Logfire write token.")
+    service_name: str = Field("hospitopt-api", description="Service name reported to Logfire.")
+    service_version: str | None = Field(None, description="Service version reported to Logfire.")
+    environment: str | None = Field(None, description="Deployment environment (e.g. 'production', 'staging').")
+    send_to_logfire: bool = Field(True, description="Send traces to Logfire cloud (False for local-only).")
 
 
 class AgentConfig(BaseModel):
@@ -101,3 +117,4 @@ class APIConfig(BaseAppConfig):
     api_key: FromEnv[SecretStr] = Field(description="API key for authentication.")
     cors: CorsConfig = Field(default_factory=CorsConfig, description="CORS configuration.")
     agents: AgentsConfig = Field(default_factory=AgentsConfig, description="Agent configurations.")
+    logfire: LogfireConfig = Field(default_factory=LogfireConfig, description="Logfire observability configuration.")

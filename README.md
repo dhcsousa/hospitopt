@@ -33,9 +33,9 @@ A Python-based optimization system that uses constraint programming to maximize 
 
 HospitOPT is built as a microservices architecture with three main components:
 
-- **REST API** (`hospitopt-api`): FastAPI-based service providing access to resources (hospitals, patients, ambulances) and optimization results
+- **REST API** (`hospitopt-api`): FastAPI-based service providing access to resources (hospitals, patients, ambulances), optimization results, and AI agent endpoints
 - **Optimization Worker** (`hospitopt-worker`): Background service that continuously monitors for changes and runs constraint programming optimization using Pyomo and Google Maps routing data
-- **Web Dashboard** (`frontend`): Interactive Reflex-based dashboard for visualizing assignments and system metrics
+- **Web Dashboard** (`frontend`): Interactive Reflex-based dashboard for visualizing assignments, system metrics, and AI-powered situational awareness
 
 The system automatically re-optimizes ambulance-to-hospital assignments whenever inputs change, ensuring timely medical response for all patients while respecting capacity constraints and urgency deadlines.
 
@@ -47,6 +47,7 @@ FastAPI-based REST service that provides access to:
 
 - **Resources**: GET endpoints for hospitals, patients, and ambulances (paginated)
 - **Assignments**: GET endpoint for patient-to-hospital-ambulance assignments with optimization metadata
+- **AI Agents**: SITREP and Chat agent endpoints powered by PydanticAI
 - **Health**: Health check endpoint for monitoring
 
 The API uses API key authentication and CORS middleware for secure cross-origin access. It connects to PostgreSQL to serve the current state of the system.
@@ -56,6 +57,7 @@ The API uses API key authentication and CORS middleware for secure cross-origin 
 - Paginated responses (configurable limits)
 - YAML-based configuration
 - CORS support for frontend integration
+- AI agent integration via PydanticAI and AG-UI protocol
 
 ### Optimization Worker (`hospitopt-worker`)
 
@@ -82,6 +84,15 @@ Maximizes the number of patients who receive timely care by assigning each patie
 - Flags cases requiring aerial evacuation when ground transport is insufficient
 - Capacity and resource shortfall detection
 
+### AI Agents
+
+HospitOPT includes two AI agents built with [PydanticAI](https://ai.pydantic.dev/) that provide situational awareness over live data:
+
+- **SITREP Agent**: Generates structured situation reports by querying live database state through tool calls (patient counts, hospital capacity, ambulance utilization, critical patients, unassigned patients). Returns a structured `SitrepReport` with seven sections.
+- **Chat Agent**: Free-form Q&A agent that answers questions about the current scenario. Streams responses over SSE using the [AG-UI protocol](https://docs.ag-ui.com/).
+
+The agents are configurable via `configs/api.yaml` — you can point them at any OpenAI-compatible endpoint (including local models via Ollama).
+
 ### Web Dashboard (`frontend`)
 
 Interactive Reflex-based dashboard providing real-time visualization of the optimization system.
@@ -89,6 +100,8 @@ Interactive Reflex-based dashboard providing real-time visualization of the opti
 **Features:**
 - **Map View**: Displays hospitals, patients, and ambulances with color-coded assignments
 - **Assignments Table**: Detailed view of patient allocations with travel times and deadlines
+- **SITREP Panel**: AI-generated situation report with tabbed sections (summary, patients, hospitals, ambulances, critical cases, unassigned patients, recommended actions). Auto-triggers on tab click and skips the LLM call if the scenario data hasn't changed (fingerprint-based caching).
+- **Chat Widget**: Streaming AI chat available on map and assignments tabs for ad-hoc questions about the current scenario
 - **Metrics Panel**:
   - Assigned ambulance percentage
   - Patients requiring urgent aerial extraction
@@ -137,6 +150,9 @@ Edit `.env` and set:
 - `HOSPITOPT_DB_PASSWORD`: PostgreSQL password
 - `HOSPITOPT_API_KEY`: API key for authentication
 - `GOOGLE_MAPS_API_KEY`: Your Google Maps API key
+- `OPENAI_API_KEY`: API key for AI agents (or leave blank when using a local model via Ollama)
+
+The AI agent models and endpoints are configured in `configs/api.yaml` under the `agents` section. To use a local model (e.g. via Ollama), uncomment the `base_url` lines and set the model name accordingly.
 
 ### 3. Database Setup
 
@@ -233,8 +249,10 @@ The frontend will be available at `http://localhost:3000` and the API at `http:/
 - `GET /patients` - List patients (paginated)
 - `GET /ambulances` - List ambulances (paginated)
 - `GET /assignments` - List patient assignments (paginated, sorted by optimization time)
+- `POST /agents/sitrep` - Generate a structured situation report (JSON)
+- `POST /agents/chat` - Stream a chat response (SSE via AG-UI protocol)
 
-All resource endpoints except `/health` require API key authentication via `Authorization: Bearer <API_KEY>` header.
+All resource and agent endpoints except `/health` require API key authentication via `Authorization: Bearer <API_KEY>` header.
 
 ## Development
 

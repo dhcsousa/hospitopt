@@ -17,6 +17,7 @@ from hospitopt_api.models import (
     AmbulanceStatusInfo,
     CriticalPatientInfo,
     HospitalCapacityInfo,
+    ScreenContext,
     SitrepReport,
     SituationSummary,
     UnassignedPatientInfo,
@@ -31,10 +32,17 @@ from hospitopt_core.db.models import (
 
 
 @dataclass
-class AgentDeps:
-    """Dependencies injected into the agent at runtime."""
+class SITREPDeps:
+    """Dependencies injected into the SITREP agent at runtime."""
 
     session_factory: async_sessionmaker[AsyncSession]
+
+
+@dataclass
+class ChatDeps:
+    """Dependencies injected into the chat agent at runtime."""
+
+    screen_context: ScreenContext
 
 
 def _make_model(config: AgentConfig) -> OpenAIResponsesModel:
@@ -45,17 +53,17 @@ def _make_model(config: AgentConfig) -> OpenAIResponsesModel:
     return OpenAIResponsesModel(config.model, provider=provider)
 
 
-def create_sitrep_agent(config: AgentConfig) -> Agent[AgentDeps, SitrepReport]:
+def create_sitrep_agent(config: AgentConfig) -> Agent[SITREPDeps, SitrepReport]:
     """Create the SITREP agent that queries live data and generates structured situation reports."""
-    agent: Agent[AgentDeps, SitrepReport] = Agent(
+    agent: Agent[SITREPDeps, SitrepReport] = Agent(
         model=_make_model(config),
         system_prompt=config.system_prompt,
-        deps_type=AgentDeps,
+        deps_type=SITREPDeps,
         output_type=SitrepReport,
     )
 
     @agent.tool
-    async def get_situation_summary(ctx: RunContext[AgentDeps]) -> SituationSummary:
+    async def get_situation_summary(ctx: RunContext[SITREPDeps]) -> SituationSummary:
         """Get a high-level summary of the current MCE situation: patient counts, hospital capacity, ambulance status."""
         async with ctx.deps.session_factory() as session:
             total_patients = await session.scalar(select(func.count()).select_from(PatientDB)) or 0
@@ -106,7 +114,7 @@ def create_sitrep_agent(config: AgentConfig) -> Agent[AgentDeps, SitrepReport]:
 
     @agent.tool
     async def get_hospitals_near_capacity(
-        ctx: RunContext[AgentDeps], threshold_pct: float = 80.0
+        ctx: RunContext[SITREPDeps], threshold_pct: float = 80.0
     ) -> list[HospitalCapacityInfo]:
         """Get hospitals where bed occupancy exceeds the given threshold percentage. Defaults to 80%."""
         async with ctx.deps.session_factory() as session:
@@ -131,7 +139,7 @@ def create_sitrep_agent(config: AgentConfig) -> Agent[AgentDeps, SitrepReport]:
 
     @agent.tool
     async def get_critical_patients(
-        ctx: RunContext[AgentDeps], max_slack_minutes: int = 5
+        ctx: RunContext[SITREPDeps], max_slack_minutes: int = 5
     ) -> list[CriticalPatientInfo]:
         """Get patients with deadline slack <= the given threshold (default 5 minutes). These are the most time-critical."""
         async with ctx.deps.session_factory() as session:
@@ -156,7 +164,7 @@ def create_sitrep_agent(config: AgentConfig) -> Agent[AgentDeps, SitrepReport]:
             ]
 
     @agent.tool
-    async def get_unassigned_patients(ctx: RunContext[AgentDeps]) -> list[UnassignedPatientInfo]:
+    async def get_unassigned_patients(ctx: RunContext[SITREPDeps]) -> list[UnassignedPatientInfo]:
         """Get patients that require urgent transport (no hospital/ambulance assignment — likely need helicopter extraction)."""
         async with ctx.deps.session_factory() as session:
             result = await session.execute(
@@ -172,7 +180,7 @@ def create_sitrep_agent(config: AgentConfig) -> Agent[AgentDeps, SitrepReport]:
             ]
 
     @agent.tool
-    async def get_ambulance_utilization(ctx: RunContext[AgentDeps]) -> AmbulanceStatusInfo:
+    async def get_ambulance_utilization(ctx: RunContext[SITREPDeps]) -> AmbulanceStatusInfo:
         """Get ambulance fleet utilization statistics."""
         async with ctx.deps.session_factory() as session:
             total = await session.scalar(select(func.count()).select_from(AmbulanceDB)) or 0
@@ -192,9 +200,25 @@ def create_sitrep_agent(config: AgentConfig) -> Agent[AgentDeps, SitrepReport]:
     return agent
 
 
-def create_chat_agent(config: AgentConfig) -> Agent[None, str]:
+def create_chat_agent(config: AgentConfig) -> Agent[ChatDeps, str]:
     """Create the Q&A chat agent that answers questions about the current screen context."""
-    return Agent(
+    agent: Agent[ChatDeps, str] = Agent(
         model=_make_model(config),
-        system_prompt=config.system_prompt,
+        instructions=config.system_prompt,
+        deps_type=ChatDeps,
     )
+
+    @agent.instructions
+    async def inject_screen_context(ctx: RunContext[ChatDeps]) -> str:
+        """Append the live screen context snapshot to the system prompt."""
+        if not ctx.deps.screen_context:
+            raise ValueError("ChatDeps must include a screen_context to use the chat agent.")
+        return (
+            "=== LIVE DASHBOARD DATA (use this to answer ALL questions) ===\n\n"
+            f"{ctx.deps.screen_context}\n\n"
+            "=== END DASHBOARD DATA ===\n"
+            "Base ALL answers on the data above. If the user asks about "
+            "'the situation' or 'what is going on', summarize these operational metrics."
+        )
+
+    return agent
