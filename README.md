@@ -91,7 +91,7 @@ HospitOPT includes two AI agents built with [PydanticAI](https://ai.pydantic.dev
 - **SITREP Agent**: Generates structured situation reports by querying live database state through tool calls (patient counts, hospital capacity, ambulance utilization, critical patients, unassigned patients). Returns a structured `SitrepReport` with seven sections.
 - **Chat Agent**: Free-form Q&A agent that answers questions about the current scenario. Streams responses over SSE using the [AG-UI protocol](https://docs.ag-ui.com/).
 
-The agents are configurable via `configs/api.yaml` — you can point them at any OpenAI-compatible endpoint (including local models via Ollama).
+The agents are configurable via `configs/api.yaml` — you can point them at any OpenAI-compatible endpoint (including local models via Ollama). [Pydantic Logfire](https://logfire.pydantic.dev/) instrumentation is available for tracing agent runs and can be enabled in `configs/api.yaml` under the `logfire` section.
 
 ### Web Dashboard (`frontend`)
 
