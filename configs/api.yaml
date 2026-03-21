@@ -9,6 +9,14 @@ db_connection:
   user: hospitopt_user
   password: ENV("HOSPITOPT_DB_PASSWORD")
 
+agents:
+  sitrep:
+    model: qwen3:8b
+    base_url: http://localhost:11434/v1
+  chat:
+    model: qwen3:8b
+    base_url: http://localhost:11434/v1
+
 cors:
   allow_origins:
     - http://localhost:3000

@@ -60,7 +60,7 @@ DEFAULT_CHAT_PROMPT = (
 class AgentConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    model: str = Field("qwen3.5:27b", description="PydanticAI model identifier (e.g. 'qwen3.5:27b').")
+    model: str = Field(description="PydanticAI model identifier (e.g. 'qwen3:8b').")
     api_key: FromEnv[SecretStr] | None = Field(
         None, description="API key for the LLM provider. Required for OpenAI, not needed for Ollama."
     )

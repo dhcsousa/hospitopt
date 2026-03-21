@@ -8,7 +8,7 @@ Two agents:
 from dataclasses import dataclass
 
 from pydantic_ai import Agent, RunContext
-from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.openai import OpenAIResponsesModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession
@@ -36,12 +36,12 @@ class AgentDeps:
     session_factory: async_sessionmaker[AsyncSession]
 
 
-def _make_model(config: AgentConfig) -> OpenAIChatModel:
+def _make_model(config: AgentConfig) -> OpenAIResponsesModel:
     provider = OpenAIProvider(
-        base_url=config.base_url,
+        base_url=str(config.base_url),
         api_key=config.api_key.get_secret_value() if config.api_key else None,
     )
-    return OpenAIChatModel(config.model, provider=provider)
+    return OpenAIResponsesModel(config.model, provider=provider)
 
 
 def create_sitrep_agent(config: AgentConfig) -> Agent[AgentDeps, str]:
