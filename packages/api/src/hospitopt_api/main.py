@@ -3,11 +3,12 @@
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Security
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from hospitopt_api.agent import create_chat_agent, create_sitrep_agent
+from hospitopt_api.dependencies import verify_api_key
 from hospitopt_api.routes import agents, ambulances, assignments, health, hospitals, patients
 from hospitopt_core.config.env import Environment
 
@@ -50,9 +51,10 @@ app.add_middleware(
 )
 
 # Register routers
+_auth = [Security(verify_api_key)]
 app.include_router(health.router)
-app.include_router(hospitals.router)
-app.include_router(patients.router)
-app.include_router(ambulances.router)
-app.include_router(assignments.router)
-app.include_router(agents.router)
+app.include_router(hospitals.router, dependencies=_auth)
+app.include_router(patients.router, dependencies=_auth)
+app.include_router(ambulances.router, dependencies=_auth)
+app.include_router(assignments.router, dependencies=_auth)
+app.include_router(agents.router, dependencies=_auth)

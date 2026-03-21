@@ -1,14 +1,12 @@
 """AG-UI protocol endpoints for the SITREP and Chat agents."""
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from ag_ui.core import RunAgentInput
 from pydantic_ai.ag_ui import SSE_CONTENT_TYPE, run_ag_ui
 
 from hospitopt_api.agent import AgentDeps
-from hospitopt_api.dependencies import get_session
 
 router = APIRouter(prefix="/agents", tags=["Agents"])
 
@@ -17,12 +15,11 @@ router = APIRouter(prefix="/agents", tags=["Agents"])
 async def run_sitrep_agent(
     request: Request,
     run_input: RunAgentInput,
-    session: AsyncSession = Depends(get_session),
 ) -> StreamingResponse:
     """Run the SITREP agent. Streams ag-ui events over SSE."""
     accept = request.headers.get("accept", SSE_CONTENT_TYPE)
     agent = request.app.state.sitrep_agent
-    deps = AgentDeps(session=session)
+    deps = AgentDeps(session_factory=request.app.state.session_factory)
 
     return StreamingResponse(
         run_ag_ui(agent, run_input, accept=accept, deps=deps),
