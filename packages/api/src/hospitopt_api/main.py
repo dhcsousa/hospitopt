@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from hospitopt_api.agent import create_chat_agent, create_sitrep_agent
-from hospitopt_api.routes import ambulances, assignments, health, hospitals, patients
+from hospitopt_api.routes import agents, ambulances, assignments, health, hospitals, patients
 from hospitopt_core.config.env import Environment
 
 from hospitopt_api.settings import APIConfig
@@ -55,3 +55,4 @@ app.include_router(hospitals.router)
 app.include_router(patients.router)
 app.include_router(ambulances.router)
 app.include_router(assignments.router)
+app.include_router(agents.router)

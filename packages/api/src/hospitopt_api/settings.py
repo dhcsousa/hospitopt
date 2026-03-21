@@ -37,7 +37,7 @@ DEFAULT_SITREP_PROMPT = (
     "  5. CRITICAL: Patients with <5 min deadline slack\n"
     "  6. RECOMMENDATIONS: Actionable next steps\n"
     "\n"
-    "Be concise, direct, and professional — like a military operations briefing.\n"
+    "Be concise, direct, and professional just do the SITREP.\n"
 )
 
 DEFAULT_CHAT_PROMPT = (
