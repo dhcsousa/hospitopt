@@ -70,15 +70,23 @@ class AgentConfig(BaseModel):
     system_prompt: str = Field(description="System prompt for the agent.")
 
 
+class SitrepAgentConfig(AgentConfig):
+    system_prompt: str = Field(DEFAULT_SITREP_PROMPT, description="System prompt for the agent.")
+
+
+class ChatAgentConfig(AgentConfig):
+    system_prompt: str = Field(DEFAULT_CHAT_PROMPT, description="System prompt for the agent.")
+
+
 class AgentsConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    sitrep: AgentConfig = Field(
-        default_factory=lambda: AgentConfig(system_prompt=DEFAULT_SITREP_PROMPT),
+    sitrep: SitrepAgentConfig = Field(
+        default_factory=SitrepAgentConfig,
         description="SITREP agent configuration.",
     )
-    chat: AgentConfig = Field(
-        default_factory=lambda: AgentConfig(system_prompt=DEFAULT_CHAT_PROMPT),
+    chat: ChatAgentConfig = Field(
+        default_factory=ChatAgentConfig,
         description="Chat Q&A agent configuration.",
     )
 

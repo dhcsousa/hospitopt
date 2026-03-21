@@ -1,6 +1,21 @@
 {
   "$defs": {
-    "AgentConfig": {
+    "AgentsConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "sitrep": {
+          "$ref": "#/$defs/SitrepAgentConfig",
+          "description": "SITREP agent configuration."
+        },
+        "chat": {
+          "$ref": "#/$defs/ChatAgentConfig",
+          "description": "Chat Q&A agent configuration."
+        }
+      },
+      "title": "AgentsConfig",
+      "type": "object"
+    },
+    "ChatAgentConfig": {
       "additionalProperties": false,
       "properties": {
         "model": {
@@ -31,30 +46,13 @@
           "type": "string"
         },
         "system_prompt": {
+          "default": "You are the HospitOPT Chat Assistant embedded in the operations dashboard.\n\nThe user is an emergency coordinator viewing a specific screen in the dashboard.\nEach message includes a JSON context snapshot of what is currently visible on screen (e.g. map markers, assignment rows, metrics).\n\nYour job:\n- Answer questions about the data the user is looking at.\n- Explain what values mean (e.g. deadline slack, urgent transport flag).\n- Highlight anomalies or concerns visible in the context.\n- Keep answers short and relevant to the current view.\n\nDo NOT make up data. If the answer is not in the provided context, say so.\n",
           "description": "System prompt for the agent.",
           "title": "System Prompt",
           "type": "string"
         }
       },
-      "required": [
-        "system_prompt"
-      ],
-      "title": "AgentConfig",
-      "type": "object"
-    },
-    "AgentsConfig": {
-      "additionalProperties": false,
-      "properties": {
-        "sitrep": {
-          "$ref": "#/$defs/AgentConfig",
-          "description": "SITREP agent configuration."
-        },
-        "chat": {
-          "$ref": "#/$defs/AgentConfig",
-          "description": "Chat Q&A agent configuration."
-        }
-      },
-      "title": "AgentsConfig",
+      "title": "ChatAgentConfig",
       "type": "object"
     },
     "CorsConfig": {
@@ -190,6 +188,46 @@
         }
       },
       "title": "LoggingConfig",
+      "type": "object"
+    },
+    "SitrepAgentConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "default": "qwen3.5:27b",
+          "description": "PydanticAI model identifier (e.g. 'qwen3.5:27b').",
+          "title": "Model",
+          "type": "string"
+        },
+        "api_key": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FromEnv_SecretStr_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "API key for the LLM provider. Required for OpenAI, not needed for Ollama."
+        },
+        "base_url": {
+          "default": null,
+          "description": "Base URL for the LLM provider (e.g. 'http://localhost:11434/v1' for Ollama).",
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "title": "Base Url",
+          "type": "string"
+        },
+        "system_prompt": {
+          "default": "You are the AI Incident Commander Assistant for HospitOPT, an emergency medical resource optimization system used during mass casualty events (MCEs).\n\nYour role:\n- Provide clear, actionable intelligence to emergency coordinators.\n- Summarize the current situation when asked (SITREP format).\n- Identify critical patients who are running out of time.\n- Flag hospitals nearing capacity.\n- Recommend actions based on real-time data.\n\nYou have access to tools that query live operational data. Use them to answer questions accurately. Always cite numbers from the data \u2014 never guess.\n\nWhen generating a SITREP, use this format:\n  SITREP \u2014 [timestamp]\n  1. SITUATION: Overall summary\n  2. PATIENTS: Total, assigned, unassigned, urgent\n  3. HOSPITALS: Capacity status, which are near full\n  4. AMBULANCES: Deployed vs idle\n  5. CRITICAL: Patients with <5 min deadline slack\n  6. RECOMMENDATIONS: Actionable next steps\n\nBe concise, direct, and professional just do the SITREP.\n",
+          "description": "System prompt for the agent.",
+          "title": "System Prompt",
+          "type": "string"
+        }
+      },
+      "title": "SitrepAgentConfig",
       "type": "object"
     }
   },
