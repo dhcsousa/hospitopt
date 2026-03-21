@@ -3,11 +3,13 @@
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Security
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from hospitopt_api.routes import ambulances, assignments, health, hospitals, patients
+from hospitopt_api.agent import create_chat_agent, create_sitrep_agent
+from hospitopt_api.dependencies import verify_api_key
+from hospitopt_api.routes import agents, ambulances, assignments, health, hospitals, patients
 from hospitopt_core.config.env import Environment
 
 from hospitopt_api.settings import APIConfig
@@ -23,10 +25,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:  # pragma: no cover
     """Manage app lifespan - setup and teardown."""
     config.logging.setup_logging(level=env.LOG_LEVEL)
 
+    if config.logfire.enabled:
+        import logfire
+
+        logfire.configure(
+            token=config.logfire.token,
+            service_name=config.logfire.service_name,
+            service_version=config.logfire.service_version,
+            environment=config.logfire.environment,
+            send_to_logfire=config.logfire.send_to_logfire,
+        )
+        logfire.instrument_pydantic_ai()
+
     engine, session_factory = config.db_connection.to_engine_session_factory()
     app.state.engine = engine
     app.state.session_factory = session_factory
     app.state.config = config
+    app.state.sitrep_agent = create_sitrep_agent(config.agents.sitrep)
+    app.state.chat_agent = create_chat_agent(config.agents.chat)
 
     try:
         yield
@@ -47,8 +63,10 @@ app.add_middleware(
 )
 
 # Register routers
+_auth = [Security(verify_api_key)]
 app.include_router(health.router)
-app.include_router(hospitals.router)
-app.include_router(patients.router)
-app.include_router(ambulances.router)
-app.include_router(assignments.router)
+app.include_router(hospitals.router, dependencies=_auth)
+app.include_router(patients.router, dependencies=_auth)
+app.include_router(ambulances.router, dependencies=_auth)
+app.include_router(assignments.router, dependencies=_auth)
+app.include_router(agents.router, dependencies=_auth)

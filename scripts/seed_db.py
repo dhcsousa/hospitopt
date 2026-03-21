@@ -108,7 +108,9 @@ def _parse_args() -> SeedConfig:
 
 async def main() -> None:
     env = Environment()
-    app_config = WorkerConfig.from_yaml(env.CONFIG_FILE_PATH)
+    if not env.WORKER_CONFIG_FILE_PATH:
+        raise RuntimeError("WORKER_CONFIG_FILE_PATH environment variable is not set.")
+    app_config = WorkerConfig.from_yaml(env.WORKER_CONFIG_FILE_PATH)
     db_url = app_config.ingestion.connection_string()
 
     engine = create_async_engine(db_url, pool_pre_ping=True)

@@ -23,3 +23,6 @@ worker:
 
 frontend:
     cd frontend && reflex run
+
+schemas:
+    uv run python scripts/export_schemas.py

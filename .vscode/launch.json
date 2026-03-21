@@ -4,7 +4,7 @@
       "name": "Worker",
       "type": "debugpy",
       "request": "launch",
-      "module": "worker.main",
+      "module": "hospitopt_worker.main",
       "cwd": "${workspaceFolder}",
       "envFile": "${workspaceFolder}/.env",
       "env": {
@@ -19,7 +19,7 @@
       "request": "launch",
       "module": "uvicorn",
       "args": [
-        "api.main:app",
+        "hospitopt_api.main:app",
         "--reload",
         "--host",
         "0.0.0.0",

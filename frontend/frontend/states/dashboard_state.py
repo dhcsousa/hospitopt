@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import os
 from typing import Any
 
@@ -30,6 +31,7 @@ class DashboardState(rx.State):
     is_loading: bool = False
     error_message: str = ""
     api_status: str = "checking"  # "online", "offline", "checking"
+    data_fingerprint: str = ""
 
     async def load_data(self) -> None:
         self.is_loading = True
@@ -71,6 +73,17 @@ class DashboardState(rx.State):
             count = len(self.patients)
             self.map_center_lat = lat_sum / count
             self.map_center_lon = lon_sum / count
+
+        # Compute a fingerprint so the SITREP agent knows when data changed.
+        fp_parts = [
+            str(len(self.patients)),
+            str(len(self.hospitals)),
+            str(len(self.ambulances)),
+            str(len(self.assignments)),
+        ]
+        for a in sorted(self.assignments, key=lambda x: str(x.get("id", ""))):
+            fp_parts.append(f"{a.get('patient_id')}-{a.get('hospital_id')}-{a.get('ambulance_id')}")
+        self.data_fingerprint = hashlib.sha256("|".join(fp_parts).encode()).hexdigest()[:16]
 
         self.is_loading = False
 

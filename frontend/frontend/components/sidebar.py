@@ -2,6 +2,7 @@ from typing import Any, cast
 
 import reflex as rx
 
+from ..states.agent_state import AgentState
 from ..states.dashboard_state import DashboardState
 
 
@@ -36,6 +37,19 @@ def sidebar() -> rx.Component:
                 on_click=cast(Any, DashboardState).set_tab("table"),
                 class_name=rx.cond(
                     DashboardState.selected_tab == "table",
+                    "flex items-center rounded-lg px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50",
+                    "flex items-center rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100",
+                ),
+            ),
+            rx.el.button(
+                rx.icon(tag="file-text", size=18, class_name="mr-3"),
+                "SITREP",
+                on_click=[
+                    cast(Any, DashboardState).set_tab("sitrep"),
+                    AgentState.maybe_generate_sitrep(DashboardState.data_fingerprint),  # type: ignore[arg-type]
+                ],
+                class_name=rx.cond(
+                    DashboardState.selected_tab == "sitrep",
                     "flex items-center rounded-lg px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50",
                     "flex items-center rounded-lg px-3 py-2 text-sm text-slate-600 hover:bg-slate-100",
                 ),

@@ -1,5 +1,62 @@
 {
   "$defs": {
+    "AgentsConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "sitrep": {
+          "$ref": "#/$defs/SitrepAgentConfig",
+          "description": "SITREP agent configuration."
+        },
+        "chat": {
+          "$ref": "#/$defs/ChatAgentConfig",
+          "description": "Chat Q&A agent configuration."
+        }
+      },
+      "title": "AgentsConfig",
+      "type": "object"
+    },
+    "ChatAgentConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "description": "PydanticAI model identifier (e.g. 'qwen3:8b').",
+          "title": "Model",
+          "type": "string"
+        },
+        "api_key": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FromEnv_SecretStr_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "API key for the LLM provider. Required for OpenAI, not needed for Ollama."
+        },
+        "base_url": {
+          "default": null,
+          "description": "Base URL for the LLM provider (e.g. 'http://localhost:11434/v1' for Ollama).",
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "title": "Base Url",
+          "type": "string"
+        },
+        "system_prompt": {
+          "default": "You are the HospitOPT Chat Assistant embedded in the operations dashboard for operators.\n\nThe user is an emergency coordinator viewing a specific screen in the dashboard.\nEach message includes a JSON context snapshot of what is currently visible on screen (patients, hospitals, ambulances, assignments, map viewport).\n\nYour job:\n- When the user asks about 'the situation', 'what's going on', or any broad question, summarize the key operational metrics from the context: patient count, how many are assigned vs unassigned, hospital capacity, ambulance utilization, and any critical concerns (e.g. patients with low deadline slack or requiring urgent transport).\n- Answer questions about the data the user is looking at.\n- Explain what values mean (e.g. deadline slack, urgent transport flag).\n- Highlight anomalies or concerns visible in the context.\n- Keep answers short and relevant to the current view.\n\nALWAYS use the provided context data to answer. The context contains live operational data \u2014 treat it as the ground truth. Do NOT make up data beyond what is in the context.\n",
+          "description": "System prompt for the agent.",
+          "title": "System Prompt",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model"
+      ],
+      "title": "ChatAgentConfig",
+      "type": "object"
+    },
     "CorsConfig": {
       "additionalProperties": false,
       "properties": {
@@ -91,6 +148,70 @@
     "FromEnv_str_": {
       "type": "string"
     },
+    "LogfireConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "default": false,
+          "description": "Enable Logfire instrumentation.",
+          "title": "Enabled",
+          "type": "boolean"
+        },
+        "token": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Logfire write token.",
+          "title": "Token"
+        },
+        "service_name": {
+          "default": "hospitopt-api",
+          "description": "Service name reported to Logfire.",
+          "title": "Service Name",
+          "type": "string"
+        },
+        "service_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Service version reported to Logfire.",
+          "title": "Service Version"
+        },
+        "environment": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Deployment environment (e.g. 'production', 'staging').",
+          "title": "Environment"
+        },
+        "send_to_logfire": {
+          "default": true,
+          "description": "Send traces to Logfire cloud (False for local-only).",
+          "title": "Send To Logfire",
+          "type": "boolean"
+        }
+      },
+      "title": "LogfireConfig",
+      "type": "object"
+    },
     "LoggingConfig": {
       "description": "Logging configuration with production-grade defaults.",
       "properties": {
@@ -134,6 +255,48 @@
       },
       "title": "LoggingConfig",
       "type": "object"
+    },
+    "SitrepAgentConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "model": {
+          "description": "PydanticAI model identifier (e.g. 'qwen3:8b').",
+          "title": "Model",
+          "type": "string"
+        },
+        "api_key": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FromEnv_SecretStr_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "API key for the LLM provider. Required for OpenAI, not needed for Ollama."
+        },
+        "base_url": {
+          "default": null,
+          "description": "Base URL for the LLM provider (e.g. 'http://localhost:11434/v1' for Ollama).",
+          "format": "uri",
+          "maxLength": 2083,
+          "minLength": 1,
+          "title": "Base Url",
+          "type": "string"
+        },
+        "system_prompt": {
+          "default": "You are the AI Incident Commander Assistant for HospitOPT, an emergency medical resource optimization system used during mass casualty events (MCEs).\n\nYour role:\n- Provide clear, actionable intelligence to emergency coordinators.\n- Summarize the current situation when asked (SITREP format).\n- Identify critical patients who are running out of time.\n- Flag hospitals nearing capacity.\n- Recommend actions based on real-time data.\n\nYou have access to tools that query live operational data. Use ALL of them to gather a complete picture before composing the report. Always cite numbers from the data \u2014 never guess.\n\nYour output is a structured object with seven sections. Each section value must be well-formatted Markdown (use tables, bullet points, bold, etc. as appropriate).\n\nSections:\n  1. patient_overview \u2013 Total, assigned, unassigned, urgent patient counts.\n  2. hospital_capacity \u2013 Bed capacity, occupancy %, hospitals near full (use a table).\n  3. ambulance_fleet_status \u2013 Total, deployed, idle, utilization %.\n  4. critical_patients \u2013 Patients with deadline slack \u2264 5 min (table with ID, slack, deadline, assignment).\n  5. unassigned_patients \u2013 Patients requiring urgent transport (table with ID, deadline).\n  6. action_required \u2013 Bullet list of actionable recommendations.\n  7. summary \u2013 2-3 sentence overall assessment.\n\nBe concise, direct, and professional.\n",
+          "description": "System prompt for the agent.",
+          "title": "System Prompt",
+          "type": "string"
+        }
+      },
+      "required": [
+        "model"
+      ],
+      "title": "SitrepAgentConfig",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -152,6 +315,14 @@
     "cors": {
       "$ref": "#/$defs/CorsConfig",
       "description": "CORS configuration."
+    },
+    "agents": {
+      "$ref": "#/$defs/AgentsConfig",
+      "description": "Agent configurations."
+    },
+    "logfire": {
+      "$ref": "#/$defs/LogfireConfig",
+      "description": "Logfire observability configuration."
     }
   },
   "required": [

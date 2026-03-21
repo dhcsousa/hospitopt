@@ -122,6 +122,6 @@ class BaseAppConfig(BaseModel):
         if output_path is not None:
             output_file = Path(output_path)
             output_file.parent.mkdir(parents=True, exist_ok=True)
-            output_file.write_text(json.dumps(schema, indent=2))
+            output_file.write_text(json.dumps(schema, indent=2) + "\n")
 
         return schema

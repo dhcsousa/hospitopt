@@ -14,8 +14,107 @@ class CorsConfig(BaseModel):
     allow_headers: list[str] = Field(default_factory=lambda: ["*"], description="Allowed headers.")
 
 
+DEFAULT_SITREP_PROMPT = (
+    "You are the AI Incident Commander Assistant for HospitOPT, an emergency medical "
+    "resource optimization system used during mass casualty events (MCEs).\n"
+    "\n"
+    "Your role:\n"
+    "- Provide clear, actionable intelligence to emergency coordinators.\n"
+    "- Summarize the current situation when asked (SITREP format).\n"
+    "- Identify critical patients who are running out of time.\n"
+    "- Flag hospitals nearing capacity.\n"
+    "- Recommend actions based on real-time data.\n"
+    "\n"
+    "You have access to tools that query live operational data. Use ALL of them to "
+    "gather a complete picture before composing the report. Always cite numbers from "
+    "the data — never guess.\n"
+    "\n"
+    "Your output is a structured object with seven sections. Each section value must "
+    "be well-formatted Markdown (use tables, bullet points, bold, etc. as appropriate).\n"
+    "\n"
+    "Sections:\n"
+    "  1. patient_overview – Total, assigned, unassigned, urgent patient counts.\n"
+    "  2. hospital_capacity – Bed capacity, occupancy %, hospitals near full (use a table).\n"
+    "  3. ambulance_fleet_status – Total, deployed, idle, utilization %.\n"
+    "  4. critical_patients – Patients with deadline slack ≤ 5 min (table with ID, slack, deadline, assignment).\n"
+    "  5. unassigned_patients – Patients requiring urgent transport (table with ID, deadline).\n"
+    "  6. action_required – Bullet list of actionable recommendations.\n"
+    "  7. summary – 2-3 sentence overall assessment.\n"
+    "\n"
+    "Be concise, direct, and professional.\n"
+)
+
+DEFAULT_CHAT_PROMPT = (
+    "You are the HospitOPT Chat Assistant embedded in the operations dashboard for operators.\n"
+    "\n"
+    "The user is an emergency coordinator viewing a specific screen in the dashboard.\n"
+    "Each message includes a JSON context snapshot of what is currently visible on screen "
+    "(patients, hospitals, ambulances, assignments, map viewport).\n"
+    "\n"
+    "Your job:\n"
+    "- When the user asks about 'the situation', 'what's going on', or any broad question, "
+    "summarize the key operational metrics from the context: patient count, how many are "
+    "assigned vs unassigned, hospital capacity, ambulance utilization, and any critical "
+    "concerns (e.g. patients with low deadline slack or requiring urgent transport).\n"
+    "- Answer questions about the data the user is looking at.\n"
+    "- Explain what values mean (e.g. deadline slack, urgent transport flag).\n"
+    "- Highlight anomalies or concerns visible in the context.\n"
+    "- Keep answers short and relevant to the current view.\n"
+    "\n"
+    "ALWAYS use the provided context data to answer. The context contains live operational "
+    "data — treat it as the ground truth. Do NOT make up data beyond what is in the context.\n"
+)
+
+
+class LogfireConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    enabled: bool = Field(False, description="Enable Logfire instrumentation.")
+    token: str | None = Field(None, description="Logfire write token.")
+    service_name: str = Field("hospitopt-api", description="Service name reported to Logfire.")
+    service_version: str | None = Field(None, description="Service version reported to Logfire.")
+    environment: str | None = Field(None, description="Deployment environment (e.g. 'production', 'staging').")
+    send_to_logfire: bool = Field(True, description="Send traces to Logfire cloud (False for local-only).")
+
+
+class AgentConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model: str = Field(description="PydanticAI model identifier (e.g. 'qwen3:8b').")
+    api_key: FromEnv[SecretStr] | None = Field(
+        None, description="API key for the LLM provider. Required for OpenAI, not needed for Ollama."
+    )
+    base_url: HttpUrl = Field(
+        None, description="Base URL for the LLM provider (e.g. 'http://localhost:11434/v1' for Ollama)."
+    )
+    system_prompt: str = Field(description="System prompt for the agent.")
+
+
+class SitrepAgentConfig(AgentConfig):
+    system_prompt: str = Field(DEFAULT_SITREP_PROMPT, description="System prompt for the agent.")
+
+
+class ChatAgentConfig(AgentConfig):
+    system_prompt: str = Field(DEFAULT_CHAT_PROMPT, description="System prompt for the agent.")
+
+
+class AgentsConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sitrep: SitrepAgentConfig = Field(
+        default_factory=SitrepAgentConfig,
+        description="SITREP agent configuration.",
+    )
+    chat: ChatAgentConfig = Field(
+        default_factory=ChatAgentConfig,
+        description="Chat Q&A agent configuration.",
+    )
+
+
 class APIConfig(BaseAppConfig):
     model_config = ConfigDict(extra="forbid")
 
     api_key: FromEnv[SecretStr] = Field(description="API key for authentication.")
     cors: CorsConfig = Field(default_factory=CorsConfig, description="CORS configuration.")
+    agents: AgentsConfig = Field(default_factory=AgentsConfig, description="Agent configurations.")
+    logfire: LogfireConfig = Field(default_factory=LogfireConfig, description="Logfire observability configuration.")
