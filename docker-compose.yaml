@@ -28,7 +28,8 @@ services:
       WORKER_CONFIG_FILE_PATH: /app/configs/worker.yaml
       HOSPITOPT_DB_PASSWORD: ${HOSPITOPT_DB_PASSWORD:-your_database_password_here}
       HOSPITOPT_DB_HOST: db
-      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-your_google_maps_api_key_here}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+      VALHALLA_URL: http://valhalla:8002
     volumes:
       - ./configs:/app/configs:ro
     depends_on:
@@ -79,9 +80,25 @@ services:
       - hospitopt-network
     restart: unless-stopped
 
+  valhalla:
+    image: ghcr.io/valhalla/valhalla-scripted:latest
+    container_name: hospitopt-valhalla
+    ports:
+      - "8002:8002"
+    volumes:
+      - valhalla_tiles:/custom_files
+    environment:
+      # Download a region's OSM extract on first start.
+      # Change to your region: https://download.geofabrik.de/
+      tile_urls: ${VALHALLA_TILE_URLS:-https://download.geofabrik.de/europe/portugal-latest.osm.pbf}
+    networks:
+      - hospitopt-network
+    restart: unless-stopped
+
 networks:
   hospitopt-network:
     driver: bridge
 
 volumes:
   hospitopt_pg:
+  valhalla_tiles:
