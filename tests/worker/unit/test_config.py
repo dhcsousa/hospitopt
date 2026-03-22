@@ -20,7 +20,9 @@ def test_worker_config_from_yaml_resolves_env(monkeypatch: pytest.MonkeyPatch, t
     yaml_path = tmp_path / "worker.yaml"
     yaml_path.write_text(
         """poll_interval_seconds: 5.5
-google_maps_api_key: ENV("GMAPS_KEY")
+routing:
+  backend: google
+  api_key: ENV("GMAPS_KEY")
 db_connection:
   host: ENV("DB_HOST")
   port: ENV("DB_PORT")
@@ -41,7 +43,7 @@ ingestion:
 
     assert config.ingestion.host == env_values["DB_HOST"]
     assert config.ingestion.port == int(env_values["DB_PORT"])
-    assert config.google_maps_api_key.get_secret_value() == env_values["GMAPS_KEY"]
+    assert config.routing.api_key.get_secret_value() == env_values["GMAPS_KEY"]
     assert config.db_connection.password.get_secret_value() == env_values["DB_PASS"]
 
 
@@ -50,7 +52,9 @@ def test_worker_config_from_yaml_missing_env(monkeypatch: pytest.MonkeyPatch, tm
     yaml_path = tmp_path / "worker.yaml"
     yaml_path.write_text(
         """poll_interval_seconds: 1
-google_maps_api_key: ENV(MISSING_ENV)
+routing:
+  backend: google
+  api_key: ENV(MISSING_ENV)
 db_connection:
   host: localhost
   port: 5432

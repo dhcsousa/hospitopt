@@ -5,23 +5,43 @@ from reflex.vars.base import Var
 from frontend.states.dashboard_state import DashboardState
 
 
-def _create_colored_div_icon(color_var: Var, icon_type: str, size: tuple[int, int]) -> Var:
-    """Create a colored div icon using Leaflet's divIcon."""
-    # Use emoji or simple HTML for different icon types
-    icon_html_map = {
-        "hospital": "🏥",
-        "patient": "🤕",
-        "ambulance": "🚑",
-    }
+def _create_colored_div_icon(
+    color_var: Var, icon_type: str, size: tuple[int, int], is_carrying: Var | None = None
+) -> Var:
+    """Create a duck-typed Leaflet icon object in pure JS (no window.L dependency)."""
+    anchor_x = size[0] // 2
+    anchor_y = size[1]
 
-    icon_emoji = icon_html_map.get(icon_type, "📍")
+    if icon_type == "ambulance" and is_carrying is not None:
+        # Dynamically switch emoji based on whether ambulance is carrying a patient
+        emoji_expr = f"(({str(is_carrying)}) ? '🚑💨' : '🚑')"
+    else:
+        icon_html_map = {
+            "hospital": "🏥",
+            "patient": "🤕",
+        }
+        emoji_expr = f"'{icon_html_map.get(icon_type, '📍')}'"
 
-    # Create JavaScript expression that creates a divIcon with colored background
-    js_expr = f"""window.L && window.L.divIcon({{
-        html: `<div style="background-color: ${{({str(color_var)}) || '#6b7280'}}; width: {size[0]}px; height: {size[1]}px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">{icon_emoji}</div>`,
-        className: '',
-        iconSize: [{size[0]}, {size[1]}],
-        iconAnchor: [{size[0] // 2}, {size[1]}]
+    js_expr = f"""({{
+        options: {{
+            iconSize: [{size[0]}, {size[1]}],
+            iconAnchor: [{anchor_x}, {anchor_y}],
+            popupAnchor: [0, -{anchor_y}],
+            tooltipAnchor: [{anchor_x}, 0],
+            className: ''
+        }},
+        createIcon: function(oldIcon) {{
+            var div = (oldIcon && oldIcon.tagName === 'DIV') ? oldIcon : document.createElement('div');
+            var emoji = {emoji_expr};
+            div.innerHTML = `<div style="background-color: ${{({str(color_var)}) || '#6b7280'}}; width: {size[0]}px; height: {size[1]}px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${{emoji}}</div>`;
+            div.className = 'leaflet-marker-icon';
+            div.style.width = '{size[0]}px';
+            div.style.height = '{size[1]}px';
+            div.style.marginLeft = '-{anchor_x}px';
+            div.style.marginTop = '-{anchor_y}px';
+            return div;
+        }},
+        createShadow: function() {{ return null; }}
     }})"""
 
     return Var(_js_expr=js_expr)
@@ -65,9 +85,23 @@ def map_view() -> rx.Component:
             lambda patient: rxe.map.marker(
                 rxe.map.popup(
                     rx.vstack(
-                        rx.text("Patient", weight="bold"),
+                        rx.text(
+                            rx.cond(patient.get("name"), patient.get("name"), "Patient"),
+                            weight="bold",
+                        ),
                         rx.hstack(
-                            rx.text("Time to hospital:"),
+                            rx.text("Status:"),
+                            rx.text(
+                                rx.cond(
+                                    patient.get("status"),
+                                    patient.get("status"),
+                                    "—",
+                                )
+                            ),
+                            spacing="1",
+                        ),
+                        rx.hstack(
+                            rx.text("Deadline:"),
                             rx.text(
                                 rx.cond(
                                     patient.get("time_to_hospital_minutes"),
@@ -84,6 +118,15 @@ def map_view() -> rx.Component:
                             ),
                             spacing="1",
                         ),
+                        rx.cond(
+                            patient.get("hospital_name"),
+                            rx.hstack(
+                                rx.text("→"),
+                                rx.text(patient.get("hospital_name")),
+                                spacing="1",
+                            ),
+                            rx.fragment(),
+                        ),
                         spacing="1",
                     )
                 ),
@@ -96,23 +139,44 @@ def map_view() -> rx.Component:
             lambda ambulance: rxe.map.marker(
                 rxe.map.popup(
                     rx.vstack(
-                        rx.text("Ambulance", weight="bold"),
-                        rx.hstack(
-                            rx.text("Assigned:"),
-                            rx.text(
-                                rx.cond(
-                                    ambulance.get("assigned_patient_id"),
-                                    ambulance.get("assigned_patient_id"),
-                                    "—",
-                                )
+                        rx.text(
+                            rx.cond(
+                                ambulance.get("is_carrying"),
+                                "Ambulance (carrying)",
+                                "Ambulance",
                             ),
-                            spacing="1",
+                            weight="bold",
+                        ),
+                        rx.cond(
+                            ambulance.get("patient_name"),
+                            rx.hstack(
+                                rx.text("Patient:"),
+                                rx.text(ambulance.get("patient_name")),
+                                spacing="1",
+                            ),
+                            rx.fragment(),
+                        ),
+                        rx.cond(
+                            ambulance.get("hospital_name"),
+                            rx.hstack(
+                                rx.text("→"),
+                                rx.text(ambulance.get("hospital_name")),
+                                spacing="1",
+                            ),
+                            rx.fragment(),
                         ),
                         spacing="1",
                     )
                 ),
                 position=rxe.map.latlng(lat=ambulance["lat"], lng=ambulance["lon"]),
-                custom_attrs={"icon": _create_colored_div_icon(ambulance["color"], "ambulance", (40, 40))},
+                custom_attrs={
+                    "icon": _create_colored_div_icon(
+                        ambulance["color"],
+                        "ambulance",
+                        (40, 40),
+                        is_carrying=ambulance["is_carrying"],
+                    )
+                },
             ),
         ),
         id="assignments-map",

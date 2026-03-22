@@ -1,11 +1,10 @@
 """Optimization logic for assigning patients to hospitals and ambulances."""
 
-from typing import Iterable
+from typing import Iterable, Sequence
 from uuid import UUID
 
 import pyomo.environ as pyo
-from google.maps import routing_v2
-from pydantic import PositiveFloat
+from pydantic import BaseModel, ConfigDict, PositiveFloat
 
 from hospitopt_core.domain.models import (
     Ambulance,
@@ -18,26 +17,34 @@ from hospitopt_core.domain.models import (
     PatientAssignment,
     PatientIndex,
 )
-from hospitopt_worker.routes import build_minutes_tables
 
 
-async def optimize_allocation(
-    routes_client: routing_v2.RoutesAsyncClient,
+class LockedAssignment(BaseModel):
+    """A patient whose hospital must not change during optimization."""
+
+    model_config = ConfigDict(frozen=True)
+
+    patient_id: UUID
+    hospital_id: UUID
+
+
+def optimize_allocation(
+    minutes_tables: MinutesTables,
     hospitals: Iterable[Hospital],
     patients: Iterable[Patient],
     ambulances: Iterable[Ambulance],
-    travel_mode: routing_v2.RouteTravelMode = routing_v2.RouteTravelMode.DRIVE,
-    speed_factor: PositiveFloat = 1.3,  # to account for priority vehicle speedups, 30% faster by default
+    speed_factor: PositiveFloat = 1.3,
+    locked_assignments: Sequence[LockedAssignment] = (),
 ) -> OptimizationResult:
     """Optimize patient allocations with urgency-weighted objective.
 
     Args:
-        routes_client: Google Routes async client used for travel-time matrices.
+        minutes_tables: Pre-computed travel-time matrices.
         hospitals: Available hospitals with capacities.
         patients: Patients to allocate with urgency constraints.
         ambulances: Available ambulances for transport.
-        travel_mode: Google Routes travel mode. Defaults to DRIVE.
         speed_factor: Multiplier to reduce travel time for priority transport. Defaults to 1.3.
+        locked_assignments: Patients whose hospital is fixed (e.g. already picked up).
 
     Returns:
         OptimizationResult containing assignments and summary metrics.
@@ -46,19 +53,32 @@ async def optimize_allocation(
     patient_list = list(patients)
     ambulance_list = list(ambulances)
 
+    # Build lookup: patient_id -> required hospital_id from locked assignments
+    locked_hospital: dict[UUID, UUID] = {la.patient_id: la.hospital_id for la in locked_assignments}
+
     total_capacity = sum(hospital.bed_capacity - hospital.used_beds for hospital in hospital_list)
     capacity_shortfall = max(0, len(patient_list) - total_capacity)
     ambulance_shortfall = max(0, len(patient_list) - len(ambulance_list))
 
     feasible: dict[tuple[PatientIndex, AmbulanceIndex, HospitalIndex], int] = {}
     feasible_weights: dict[tuple[PatientIndex, AmbulanceIndex, HospitalIndex], float] = {}
-    minutes_tables: MinutesTables = await build_minutes_tables(
-        routes_client, patient_list, hospital_list, ambulance_list, travel_mode=travel_mode
-    )
+    # Weight per triple must satisfy (in priority order):
+    #   1. Saving one more patient always dominates everything (large base).
+    #   2. When choosing between patients for scarce resources, prefer urgent ones.
+    #   3. Among options for the same patient, prefer shorter travel (more slack).
+    # Route bonus is scaled tiny so it never overrides urgency.
+    max_deadline = max(p.time_to_hospital_minutes for p in patient_list)
+    save_life_bonus = max_deadline + 1  # always bigger than any urgency value
+    route_scale = 1.0 / (max_deadline + 1) ** 2  # tiny, only breaks ties
+
     a_p_minutes = minutes_tables.ambulance_to_patient
     p_h_minutes = minutes_tables.patient_to_hospital
     for p_index, patient in enumerate(patient_list):
+        required_h_id = locked_hospital.get(patient.id)
+        urgency = 1.0 / patient.time_to_hospital_minutes  # tiebreak: prefer urgent patients
         for h_index, hospital in enumerate(hospital_list):
+            if required_h_id is not None and hospital.id != required_h_id:
+                continue  # patient is locked to a different hospital
             if hospital.bed_capacity <= hospital.used_beds:  # hospital already over maximum capacity
                 continue
             for a_index, ambulance in enumerate(ambulance_list):
@@ -74,7 +94,7 @@ async def optimize_allocation(
                         continue
                     feasible[(PatientIndex(p_index), AmbulanceIndex(a_index), HospitalIndex(h_index))] = travel_minutes
                     feasible_weights[(PatientIndex(p_index), AmbulanceIndex(a_index), HospitalIndex(h_index))] = (
-                        1.0 / slack
+                        save_life_bonus + urgency + slack * route_scale
                     )
 
     if not feasible:

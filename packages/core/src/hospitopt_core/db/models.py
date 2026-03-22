@@ -30,9 +30,11 @@ class PatientDB(Base):
     __tablename__ = "patients"
 
     id: Mapped[UUID] = mapped_column(Uuid(), primary_key=True, default=uuid4)
+    name: Mapped[str | None] = mapped_column(String, nullable=True)
     lat: Mapped[float] = mapped_column(Float, nullable=False)
     lon: Mapped[float] = mapped_column(Float, nullable=False)
     time_to_hospital_minutes: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="waiting")
     registered_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

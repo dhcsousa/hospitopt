@@ -178,10 +178,8 @@ class DashboardState(rx.State):
         total = len(self.ambulances)
         if total == 0:
             return "0%"
-        assigned_ids = {
-            assignment.get("ambulance_id") for assignment in self.assignments if assignment.get("ambulance_id")
-        }
-        return f"{(len(assigned_ids) / total) * 100:.1f}%"
+        busy = sum(1 for a in self.ambulances if a.get("assigned_patient_id"))
+        return f"{(busy / total) * 100:.1f}%"
 
     @rx.var(cache=True)
     def patients_without_timely_response(self) -> int:
@@ -228,58 +226,89 @@ class DashboardState(rx.State):
 
     @rx.var(cache=True)
     def hospital_colors(self) -> dict[str, str]:
-        """Assign maximally distinct colors to each hospital using distinctipy."""
-        color_map: dict[str, str] = {}
-        num_hospitals = len(self.hospitals)
+        """Assign stable, maximally distinct colors to each hospital.
 
+        Colors are derived from sorted hospital IDs so they stay
+        consistent across data refreshes.
+        """
+        color_map: dict[str, str] = {}
+        sorted_ids = sorted(h_id for h in self.hospitals if (h_id := h.get("id")) is not None)
+        num_hospitals = len(sorted_ids)
         if num_hospitals == 0:
             return color_map
 
-        # Generate distinct colors optimized for visual distinction
-        colors = distinctipy.get_colors(num_hospitals, pastel_factor=0.3)
+        # Use a fixed seed so the palette is deterministic
+        colors = distinctipy.get_colors(num_hospitals, pastel_factor=0.3, rng=42)
 
-        for idx, hospital in enumerate(self.hospitals):
-            hospital_id = hospital.get("id")
-            if hospital_id:
-                # Convert RGB tuple (0-1 range) to hex
-                rgb = colors[idx]
-                hex_color = "#{:02x}{:02x}{:02x}".format(int(rgb[0] * 255), int(rgb[1] * 255), int(rgb[2] * 255))
-                color_map[hospital_id] = hex_color
+        for idx, hospital_id in enumerate(sorted_ids):
+            rgb = colors[idx]
+            hex_color = "#{:02x}{:02x}{:02x}".format(int(rgb[0] * 255), int(rgb[1] * 255), int(rgb[2] * 255))
+            color_map[hospital_id] = hex_color
 
         return color_map
 
     @rx.var(cache=True)
     def patients_with_colors(self) -> list[dict[str, Any]]:
-        """Enrich patients with color based on assigned hospital."""
+        """Enrich active patients (not delivered) with color and assignment info."""
         assignments_by_patient = {a.get("patient_id"): a for a in self.assignments if a.get("patient_id")}
         hospital_colors = self.hospital_colors or {}
+        hospitals_by_id = {h.get("id"): h for h in self.hospitals if h.get("id")}
         result = []
         for patient in self.patients:
+            if patient.get("status") == "delivered":
+                continue  # already at hospital, hide from map
             patient_id = patient.get("id")
             assignment = assignments_by_patient.get(patient_id)
             color = "#6b7280"  # gray default
+            hospital_name = ""
             if assignment:
                 hospital_id = assignment.get("hospital_id")
                 if hospital_id:
                     color = hospital_colors.get(hospital_id, "#6b7280")
-            result.append({**patient, "color": color})
+                    hosp = hospitals_by_id.get(hospital_id)
+                    if hosp:
+                        hospital_name = hosp.get("name") or ""
+            result.append({**patient, "color": color, "hospital_name": hospital_name})
         return result
 
     @rx.var(cache=True)
     def ambulances_with_colors(self) -> list[dict[str, Any]]:
-        """Enrich ambulances with color based on assigned hospital."""
+        """Enrich ambulances with color, hospital name, patient info."""
         assignments_by_ambulance = {a.get("ambulance_id"): a for a in self.assignments if a.get("ambulance_id")}
         hospital_colors = self.hospital_colors or {}
+        hospitals_by_id = {h.get("id"): h for h in self.hospitals if h.get("id")}
+        patients_by_id = {p.get("id"): p for p in self.patients if p.get("id")}
         result = []
         for ambulance in self.ambulances:
             ambulance_id = ambulance.get("id")
             assignment = assignments_by_ambulance.get(ambulance_id)
             color = "#6b7280"  # gray default
+            hospital_name = ""
+            patient_name = ""
+            is_carrying = False
             if assignment:
                 hospital_id = assignment.get("hospital_id")
                 if hospital_id:
                     color = hospital_colors.get(hospital_id, "#6b7280")
-            result.append({**ambulance, "color": color})
+                    hosp = hospitals_by_id.get(hospital_id)
+                    if hosp:
+                        hospital_name = hosp.get("name") or ""
+            # Check if this ambulance is actively carrying a patient
+            assigned_pid = ambulance.get("assigned_patient_id")
+            if assigned_pid:
+                p = patients_by_id.get(assigned_pid)
+                if p:
+                    patient_name = p.get("name") or ""
+                    is_carrying = p.get("status") == "in_transit"
+            result.append(
+                {
+                    **ambulance,
+                    "color": color,
+                    "hospital_name": hospital_name,
+                    "patient_name": patient_name,
+                    "is_carrying": is_carrying,
+                }
+            )
         return result
 
     @rx.var(cache=True)

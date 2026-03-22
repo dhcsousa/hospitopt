@@ -4,10 +4,20 @@ from typing import Annotated, NewType
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
+from enum import StrEnum
+
 from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt
 
 Latitude = Annotated[float, Field(ge=-90.0, le=90.0)]
 Longitude = Annotated[float, Field(ge=-180.0, le=180.0)]
+
+
+class PatientStatus(StrEnum):
+    """Lifecycle status of a patient."""
+
+    WAITING = "waiting"
+    IN_TRANSIT = "in_transit"
+    DELIVERED = "delivered"
 
 
 class Hospital(BaseModel):
@@ -25,9 +35,11 @@ class Patient(BaseModel):
     """Patient with location and urgency constraint."""
 
     id: UUID = Field(default_factory=uuid4)
+    name: str | None = None
     lat: Latitude
     lon: Longitude
     time_to_hospital_minutes: PositiveInt
+    status: PatientStatus = PatientStatus.WAITING
     registered_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 

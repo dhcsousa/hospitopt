@@ -53,7 +53,7 @@ if not database_url:
                 "WORKER_CONFIG_FILE_PATH environment variable is not set. For running migrations, this must be set."
             )
         worker_config = WorkerConfig.from_yaml(env.WORKER_CONFIG_FILE_PATH)
-        database_url = worker_config.ingestion.connection_string()
+        database_url = worker_config.db_connection.connection_string()
     except Exception:
         database_url = database_url
 

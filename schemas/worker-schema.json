@@ -9,22 +9,22 @@
           "type": "string"
         },
         "host": {
-          "format": "uri",
-          "maxLength": 2083,
-          "minLength": 1,
-          "title": "Host",
-          "type": "string"
+          "$ref": "#/$defs/FromEnv_HttpUrl_"
         },
         "api_key": {
-          "format": "password",
-          "title": "Api Key",
-          "type": "string",
-          "writeOnly": true
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FromEnv_SecretStr_"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
-        "host",
-        "api_key"
+        "host"
       ],
       "title": "APIIngestion",
       "type": "object"
@@ -115,10 +115,19 @@
       "title": "DbConnectionConfig",
       "type": "object"
     },
+    "FromEnv_HttpUrl_": {
+      "format": "uri",
+      "maxLength": 2083,
+      "minLength": 1,
+      "type": "string"
+    },
     "FromEnv_SecretStr_": {
       "format": "password",
       "type": "string",
       "writeOnly": true
+    },
+    "FromEnv_bool_": {
+      "type": "boolean"
     },
     "FromEnv_float__Gt_gt_0_": {
       "type": "number"
@@ -128,6 +137,26 @@
     },
     "FromEnv_str_": {
       "type": "string"
+    },
+    "GoogleRoutingConfig": {
+      "description": "Google Maps Routes API backend.",
+      "properties": {
+        "backend": {
+          "const": "google",
+          "default": "google",
+          "title": "Backend",
+          "type": "string"
+        },
+        "api_key": {
+          "$ref": "#/$defs/FromEnv_SecretStr_",
+          "description": "Google Maps API key."
+        }
+      },
+      "required": [
+        "api_key"
+      ],
+      "title": "GoogleRoutingConfig",
+      "type": "object"
     },
     "IngestionConfig": {
       "discriminator": {
@@ -189,6 +218,69 @@
       },
       "title": "LoggingConfig",
       "type": "object"
+    },
+    "OptimizationConfig": {
+      "description": "Tuning knobs for the optimization solver.",
+      "properties": {
+        "allow_reassign_in_transit": {
+          "$ref": "#/$defs/FromEnv_bool_",
+          "default": false,
+          "description": "When True, patients already picked up (in_transit) are still considered for re-optimization.  Enable for mass-casualty scenarios where a higher-priority patient may appear."
+        },
+        "speed_factor": {
+          "$ref": "#/$defs/FromEnv_float__Gt_gt_0_",
+          "default": 1.3,
+          "description": "Multiplier applied to travel times to account for priority vehicle speedups. 1.3 means ambulances are assumed 30%% faster than normal traffic.",
+          "gt": 0
+        },
+        "allow_hospital_reassignment": {
+          "$ref": "#/$defs/FromEnv_bool_",
+          "default": true,
+          "description": "When True (default), the optimizer may change which hospital a patient is routed to on every run, even after pickup.  When False, the assigned hospital is locked once the patient is picked up (status = in_transit)."
+        }
+      },
+      "title": "OptimizationConfig",
+      "type": "object"
+    },
+    "RoutingConfig": {
+      "discriminator": {
+        "mapping": {
+          "google": "#/$defs/GoogleRoutingConfig",
+          "valhalla": "#/$defs/ValhallaRoutingConfig"
+        },
+        "propertyName": "backend"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/GoogleRoutingConfig"
+        },
+        {
+          "$ref": "#/$defs/ValhallaRoutingConfig"
+        }
+      ]
+    },
+    "ValhallaRoutingConfig": {
+      "description": "Self-hosted Valhalla routing backend (free, time-aware).",
+      "properties": {
+        "backend": {
+          "const": "valhalla",
+          "default": "valhalla",
+          "title": "Backend",
+          "type": "string"
+        },
+        "url": {
+          "$ref": "#/$defs/FromEnv_HttpUrl_",
+          "default": "http://localhost:8002",
+          "description": "Base URL of the Valhalla server."
+        },
+        "costing": {
+          "$ref": "#/$defs/FromEnv_str_",
+          "default": "auto",
+          "description": "Valhalla costing model (auto, bicycle, pedestrian, etc.)."
+        }
+      },
+      "title": "ValhallaRoutingConfig",
+      "type": "object"
     }
   },
   "additionalProperties": false,
@@ -206,18 +298,28 @@
       "description": "Polling interval in seconds.",
       "gt": 0
     },
-    "google_maps_api_key": {
-      "$ref": "#/$defs/FromEnv_SecretStr_",
-      "description": "Google Maps API key."
+    "routing": {
+      "$ref": "#/$defs/RoutingConfig",
+      "description": "Routing backend configuration."
     },
     "ingestion": {
       "$ref": "#/$defs/IngestionConfig",
-      "description": "Ingestion configuration, only db type is supported for now."
+      "description": "Ingestion configuration."
+    },
+    "sync_inputs_to_db": {
+      "default": true,
+      "description": "Write ingested data to the worker DB. Disable when ingestion reads from the same database.",
+      "title": "Sync Inputs To Db",
+      "type": "boolean"
+    },
+    "optimization": {
+      "$ref": "#/$defs/OptimizationConfig",
+      "description": "Optimization solver settings."
     }
   },
   "required": [
     "db_connection",
-    "google_maps_api_key",
+    "routing",
     "ingestion"
   ],
   "title": "WorkerConfig",

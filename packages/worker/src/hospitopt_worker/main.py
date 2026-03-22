@@ -6,14 +6,13 @@ import json
 import logging
 from collections.abc import Sequence
 
-from google.maps import routing_v2
-
 from hospitopt_core.config.env import Environment
-from hospitopt_core.domain.models import Ambulance, Hospital, Patient
+from hospitopt_core.domain.models import Ambulance, Hospital, Patient, PatientStatus
 from hospitopt_worker.db import DatabaseWriter, check_connection
 from hospitopt_worker.ingestion import APIIngestor, SQLAlchemyIngestor
 from hospitopt_worker.ingestion.base import DataIngestor
-from hospitopt_worker.optimize import optimize_allocation
+from hospitopt_worker.optimize import LockedAssignment, optimize_allocation
+from hospitopt_worker.routing import RoutingBackend
 from hospitopt_worker.settings import WorkerConfig
 
 logger = logging.getLogger(__name__)
@@ -42,6 +41,7 @@ def _hash_inputs(
 
 async def run_worker() -> None:
     """Poll for input changes and run optimization when needed."""
+    ingestion_engine = None
     ingestor: DataIngestor
     if config.ingestion.type == "db":
         ingestion_engine, ingestion_sessions = config.ingestion.to_engine_session_factory()
@@ -57,42 +57,61 @@ async def run_worker() -> None:
 
     writer = DatabaseWriter(worker_sessions)
 
-    routes_client = routing_v2.RoutesAsyncClient(
-        client_options={"api_key": config.google_maps_api_key.get_secret_value()}
-    )
+    async with RoutingBackend.from_config(config.routing) as routing:
+        last_hash: str | None = None
+        try:
+            while True:
+                hospitals = await ingestor.get_hospitals()
+                patients = await ingestor.get_patients()
+                ambulances = await ingestor.get_ambulances()
 
-    last_hash: str | None = None
-    try:
-        while True:
-            hospitals = await ingestor.get_hospitals()
-            patients = await ingestor.get_patients()
-            ambulances = await ingestor.get_ambulances()
+                current_hash = _hash_inputs(hospitals, patients, ambulances)
+                if current_hash != last_hash:
+                    if config.sync_inputs_to_db:
+                        await writer.write_inputs(hospitals, patients, ambulances)
+                    if not hospitals or not patients or not ambulances:
+                        logger.info("Skipping optimization due to missing inputs.")
+                    else:
+                        eligible_patients: Sequence[Patient]
+                        if config.optimization.allow_reassign_in_transit:
+                            eligible_patients = [p for p in patients if p.status != PatientStatus.DELIVERED]
+                        else:
+                            eligible_patients = [p for p in patients if p.status == PatientStatus.WAITING]
 
-            current_hash = _hash_inputs(hospitals, patients, ambulances)
-            if current_hash != last_hash:
-                if not hospitals or not patients or not ambulances:
-                    logger.info("Skipping optimization due to missing inputs.")
+                        # Build locked assignments when hospital reassignment is
+                        # disabled: in-transit patients keep their current hospital.
+                        locked: list[LockedAssignment] = []
+                        if not config.optimization.allow_hospital_reassignment:
+                            in_transit_ids = {p.id for p in eligible_patients if p.status == PatientStatus.IN_TRANSIT}
+                            for pid, hid in (await writer.read_locked_hospitals(in_transit_ids)).items():
+                                locked.append(LockedAssignment(patient_id=pid, hospital_id=hid))
+
+                        minutes_tables = await routing.build_minutes_tables(
+                            list(eligible_patients), list(hospitals), list(ambulances)
+                        )
+                        result = optimize_allocation(
+                            minutes_tables=minutes_tables,
+                            hospitals=hospitals,
+                            patients=eligible_patients,
+                            ambulances=ambulances,
+                            speed_factor=config.optimization.speed_factor,
+                            locked_assignments=locked,
+                        )
+                        await writer.write_optimization_result(result)
+                        logger.info(
+                            "Optimization complete. max_lives_saved=%s unassigned=%s",
+                            result.max_lives_saved,
+                            len(result.unassigned_patient_ids),
+                        )
+                    last_hash = current_hash
                 else:
-                    result = await optimize_allocation(
-                        routes_client=routes_client,
-                        hospitals=hospitals,
-                        patients=patients,
-                        ambulances=ambulances,
-                    )
-                    await writer.write_optimization_result(result)
-                    logger.info(
-                        "Optimization complete. max_lives_saved=%s unassigned=%s",
-                        result.max_lives_saved,
-                        len(result.unassigned_patient_ids),
-                    )
-                last_hash = current_hash
-            else:
-                logger.debug("No input changes detected, skipping optimization.")
+                    logger.debug("No input changes detected, skipping optimization.")
 
-            await asyncio.sleep(config.poll_interval_seconds)
-    finally:
-        await ingestion_engine.dispose()
-        await worker_engine.dispose()
+                await asyncio.sleep(config.poll_interval_seconds)
+        finally:
+            if ingestion_engine is not None:
+                await ingestion_engine.dispose()
+            await worker_engine.dispose()
 
 
 def run_worker_forever() -> None:

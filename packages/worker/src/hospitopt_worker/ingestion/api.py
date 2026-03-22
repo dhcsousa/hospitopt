@@ -15,8 +15,8 @@ ModelT = TypeVar("ModelT")
 class APIIngestor(DataIngestor):
     """HTTP-based ingestor for domain data."""
 
-    def __init__(self, host_url: HttpUrl, api_key: SecretStr) -> None:
-        headers = {"Authorization": f"Bearer {api_key.get_secret_value()}"}
+    def __init__(self, host_url: HttpUrl, api_key: SecretStr | None = None) -> None:
+        headers = {"Authorization": f"Bearer {api_key.get_secret_value()}"} if api_key else {}
         self._httpx_async_client = AsyncClient(base_url=str(host_url).rstrip("/"), headers=headers)
 
     async def get_hospitals(self) -> Sequence[Hospital]:

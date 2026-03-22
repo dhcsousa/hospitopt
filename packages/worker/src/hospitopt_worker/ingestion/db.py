@@ -38,9 +38,11 @@ class SQLAlchemyIngestor(DataIngestor):
         return [
             Patient(
                 id=row.id,
+                name=row.name,
                 lat=row.lat,
                 lon=row.lon,
                 time_to_hospital_minutes=row.time_to_hospital_minutes,
+                status=row.status,
                 registered_at=row.registered_at,
             )
             for row in rows

@@ -1,26 +1,19 @@
-import pytest
-
 from hospitopt_core.domain.models import Ambulance, Hospital, MinutesTables, Patient
 from hospitopt_worker import optimize
 
 
-@pytest.mark.asyncio
-async def test_optimize_assigns_feasible(monkeypatch):
-    async def fake_build_minutes_tables(client, patients, hospitals, ambulances, travel_mode=None):
-        # patient->hospital and ambulance->patient matrices
-        return MinutesTables(
-            patient_to_hospital={(0, 0): 5},
-            ambulance_to_patient={(0, 0): 5},
-        )
-
-    monkeypatch.setattr(optimize, "build_minutes_tables", fake_build_minutes_tables)
+def test_optimize_assigns_feasible():
+    minutes_tables = MinutesTables(
+        patient_to_hospital={(0, 0): 5},
+        ambulance_to_patient={(0, 0): 5},
+    )
 
     hospitals = [Hospital(name="H", bed_capacity=1, used_beds=0, lat=0.0, lon=0.0)]
     patients = [Patient(lat=1.0, lon=1.0, time_to_hospital_minutes=20)]
     ambulances = [Ambulance(lat=2.0, lon=2.0)]
 
-    result = await optimize.optimize_allocation(
-        routes_client=None,
+    result = optimize.optimize_allocation(
+        minutes_tables=minutes_tables,
         hospitals=hospitals,
         patients=patients,
         ambulances=ambulances,
@@ -34,22 +27,18 @@ async def test_optimize_assigns_feasible(monkeypatch):
     assert assigned[0].hospital_id == hospitals[0].id
 
 
-@pytest.mark.asyncio
-async def test_optimize_skips_over_capacity(monkeypatch):
-    async def fake_build_minutes_tables(client, patients, hospitals, ambulances, travel_mode=None):
-        return optimize.MinutesTables(
-            patient_to_hospital={(0, 0): 5},
-            ambulance_to_patient={(0, 0): 5},
-        )
-
-    monkeypatch.setattr(optimize, "build_minutes_tables", fake_build_minutes_tables)
+def test_optimize_skips_over_capacity():
+    minutes_tables = MinutesTables(
+        patient_to_hospital={(0, 0): 5},
+        ambulance_to_patient={(0, 0): 5},
+    )
 
     hospitals = [Hospital(name="H", bed_capacity=1, used_beds=1, lat=0.0, lon=0.0)]
     patients = [Patient(lat=1.0, lon=1.0, time_to_hospital_minutes=20)]
     ambulances = [Ambulance(lat=2.0, lon=2.0)]
 
-    result = await optimize.optimize_allocation(
-        routes_client=None,
+    result = optimize.optimize_allocation(
+        minutes_tables=minutes_tables,
         hospitals=hospitals,
         patients=patients,
         ambulances=ambulances,
@@ -61,20 +50,14 @@ async def test_optimize_skips_over_capacity(monkeypatch):
     assert result.assignments[0].requires_urgent_transport is True
 
 
-@pytest.mark.asyncio
-async def test_optimize_prioritizes_urgent(monkeypatch):
-    async def fake_build_minutes_tables(client, patients, hospitals, ambulances, travel_mode=None):
-        # two patients, one hospital, one ambulance
-        # patient 0: travel 18, time_to_hospital 20 => slack 2 (weight 0.5)
-        # patient 1: travel 12, time_to_hospital 50 => slack 38 (weight ~0.026)
-        p_to_h = {(0, 0): 10, (1, 0): 4}
-        a_to_p = {(0, 0): 8, (0, 1): 8}
-        return optimize.MinutesTables(
-            patient_to_hospital=p_to_h,
-            ambulance_to_patient=a_to_p,
-        )
-
-    monkeypatch.setattr(optimize, "build_minutes_tables", fake_build_minutes_tables)
+def test_optimize_prioritizes_urgent():
+    # two patients, one hospital, one ambulance
+    # patient 0: travel 18, time_to_hospital 20 => urgent (1/20 = 0.05)
+    # patient 1: travel 12, time_to_hospital 50 => less urgent (1/50 = 0.02)
+    minutes_tables = MinutesTables(
+        patient_to_hospital={(0, 0): 10, (1, 0): 4},
+        ambulance_to_patient={(0, 0): 8, (0, 1): 8},
+    )
 
     hospitals = [Hospital(name="H", bed_capacity=1, used_beds=0, lat=0.0, lon=0.0)]
     patients = [
@@ -83,8 +66,8 @@ async def test_optimize_prioritizes_urgent(monkeypatch):
     ]
     ambulances = [Ambulance(lat=3.0, lon=3.0)]
 
-    result = await optimize.optimize_allocation(
-        routes_client=None,
+    result = optimize.optimize_allocation(
+        minutes_tables=minutes_tables,
         hospitals=hospitals,
         patients=patients,
         ambulances=ambulances,
