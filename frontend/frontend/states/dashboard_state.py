@@ -24,8 +24,8 @@ class DashboardState(rx.State):
     patients: list[dict[str, Any]] = []
     hospitals: list[dict[str, Any]] = []
     ambulances: list[dict[str, Any]] = []
-    map_center_lat: float = 38.946
-    map_center_lon: float = -9.331
+    map_center_lat: float = 38.7223
+    map_center_lon: float = -9.1393
     map_zoom: float = 12.0
     selected_tab: str = "map"
     is_loading: bool = False
@@ -87,32 +87,88 @@ class DashboardState(rx.State):
 
         self.is_loading = False
 
-    async def check_api_health(self) -> None:
-        """Check if the API backend is online by pinging the health endpoint."""
-        try:
-            async with httpx.AsyncClient(timeout=2.0) as client:
-                response = await client.get(f"{API_BASE_URL}/health")
-                if response.status_code == 200:
-                    self.api_status = "online"
-                else:
-                    self.api_status = "offline"
-        except httpx.HTTPError:
-            self.api_status = "offline"
-
     @rx.event(background=True)
     async def start_health_check_polling(self) -> None:
         """Background task that polls API health every second."""
         while True:
+            # HTTP outside the state lock so it doesn't block other tasks
+            try:
+                async with httpx.AsyncClient(timeout=2.0) as client:
+                    response = await client.get(f"{API_BASE_URL}/health")
+                status = "online" if response.status_code == 200 else "offline"
+            except httpx.HTTPError:
+                status = "offline"
             async with self:
-                await self.check_api_health()
+                self.api_status = status
+            await asyncio.sleep(1)
+
+    @rx.event(background=True)
+    async def start_position_polling(self) -> None:
+        """Background task that refreshes ambulance/patient positions every second.
+
+        HTTP is done OUTSIDE async with self so the state lock is held only
+        for the brief state-write, not for the full network round-trip.
+        """
+        while True:
+            try:
+                headers = {"Authorization": f"Bearer {API_KEY}"}
+                async with httpx.AsyncClient(headers=headers) as client:
+                    ambulances_resp, patients_resp = await asyncio.gather(
+                        client.get(f"{API_BASE_URL}/ambulances", params={"limit": 1000, "offset": 0}),
+                        client.get(f"{API_BASE_URL}/patients", params={"limit": 1000, "offset": 0}),
+                    )
+                    ambulances_resp.raise_for_status()
+                    patients_resp.raise_for_status()
+                    ambulances = ambulances_resp.json().get("items", [])
+                    patients = patients_resp.json().get("items", [])
+                async with self:
+                    self.ambulances = ambulances
+                    self.patients = patients
+            except httpx.HTTPError:
+                pass  # silent — full load_data will surface errors
             await asyncio.sleep(1)
 
     @rx.event(background=True)
     async def start_data_polling(self) -> None:
-        """Background task that refreshes data every 5 seconds."""
+        """Background task that refreshes all data every 5 seconds.
+
+        HTTP is done OUTSIDE async with self so the state lock is held only
+        for the brief state-write, not for the full network round-trip.
+        """
         while True:
-            async with self:
-                await self.load_data()
+            try:
+                headers = {"Authorization": f"Bearer {API_KEY}"}
+                async with httpx.AsyncClient(headers=headers) as client:
+                    hospitals_resp, patients_resp, ambulances_resp, assignments_resp = await asyncio.gather(
+                        client.get(f"{API_BASE_URL}/hospitals", params={"limit": 1000, "offset": 0}),
+                        client.get(f"{API_BASE_URL}/patients", params={"limit": 1000, "offset": 0}),
+                        client.get(f"{API_BASE_URL}/ambulances", params={"limit": 1000, "offset": 0}),
+                        client.get(f"{API_BASE_URL}/assignments", params={"limit": 500, "offset": 0}),
+                    )
+                    hospitals_resp.raise_for_status()
+                    patients_resp.raise_for_status()
+                    ambulances_resp.raise_for_status()
+                    assignments_resp.raise_for_status()
+                    hospitals = hospitals_resp.json().get("items", [])
+                    patients = patients_resp.json().get("items", [])
+                    ambulances = ambulances_resp.json().get("items", [])
+                    assignments = assignments_resp.json().get("items", [])
+
+                fp_parts = [str(len(patients)), str(len(hospitals)), str(len(ambulances)), str(len(assignments))]
+                for a in sorted(assignments, key=lambda x: str(x.get("id", ""))):
+                    fp_parts.append(f"{a.get('patient_id')}-{a.get('hospital_id')}-{a.get('ambulance_id')}")
+                fingerprint = hashlib.sha256("|".join(fp_parts).encode()).hexdigest()[:16]
+
+                async with self:
+                    self.hospitals = hospitals
+                    self.patients = patients
+                    self.ambulances = ambulances
+                    self.assignments = assignments
+                    self.data_fingerprint = fingerprint
+                    self.error_message = ""
+            except httpx.HTTPError as exc:
+                async with self:
+                    self.error_message = f"Failed to load data: {exc}"
             await asyncio.sleep(5)
 
     def _find_by_id(self, items: list[dict[str, Any]], entity_id: str | None) -> dict[str, Any] | None:
@@ -152,13 +208,49 @@ class DashboardState(rx.State):
     def set_tab(self, value: str) -> None:
         self.selected_tab = value
 
+    def _active_patient_ids(self) -> set[str]:
+        return {
+            patient_id
+            for patient in self.patients
+            if (patient_id := patient.get("id")) and patient.get("status") in {"waiting", "in_transit"}
+        }
+
+    def _current_assignments(self) -> list[dict[str, Any]]:
+        """Return newest assignment per active patient.
+
+        /assignments includes historical rows. The API returns newest-first,
+        so keep the first row per patient and ignore delivered patients.
+        """
+        active_patient_ids = self._active_patient_ids()
+        assignments_by_patient: dict[str, dict[str, Any]] = {}
+        for assignment in self.assignments:
+            patient_id = assignment.get("patient_id")
+            if not patient_id or patient_id not in active_patient_ids:
+                continue
+            if patient_id not in assignments_by_patient:
+                assignments_by_patient[patient_id] = assignment
+        return list(assignments_by_patient.values())
+
+    @staticmethod
+    def _compute_badge_type(assignment: dict[str, Any]) -> str:
+        if not assignment.get("requires_urgent_transport"):
+            return "assigned"
+        slack = assignment.get("deadline_slack_minutes")
+        if slack is not None and slack <= 0:
+            return "impossible"
+        return "unassigned"
+
     @rx.var(cache=True)
     def priority_assignments(self) -> list[dict[str, Any]]:
         def sort_key(assignment: dict[str, Any]) -> int:
             deadline = assignment.get("treatment_deadline_minutes")
             return deadline if deadline is not None else 10**9
 
-        urgent_only = [assignment for assignment in self.assignments if assignment.get("requires_urgent_transport")]
+        urgent_only = [
+            {**assignment, "badge_type": self._compute_badge_type(assignment)}
+            for assignment in self._current_assignments()
+            if assignment.get("requires_urgent_transport")
+        ]
         return sorted(urgent_only, key=sort_key)[:10]
 
     @rx.var(cache=True)
@@ -171,14 +263,22 @@ class DashboardState(rx.State):
             deadline_value = deadline if deadline is not None else 10**9
             return (slack_missing, slack_value, deadline_value)
 
-        return sorted(self.assignments, key=sort_key)
+        return sorted(
+            ({**a, "badge_type": self._compute_badge_type(a)} for a in self._current_assignments()),
+            key=sort_key,
+        )
 
     @rx.var(cache=True)
     def allocated_ambulance_pct(self) -> str:
         total = len(self.ambulances)
         if total == 0:
             return "0%"
-        busy = sum(1 for a in self.ambulances if a.get("assigned_patient_id"))
+        allocated_ambulance_ids = {
+            assignment.get("ambulance_id")
+            for assignment in self._current_assignments()
+            if assignment.get("ambulance_id")
+        }
+        busy = len(allocated_ambulance_ids)
         return f"{(busy / total) * 100:.1f}%"
 
     @rx.var(cache=True)
@@ -186,11 +286,11 @@ class DashboardState(rx.State):
         if not self.patients:
             return 0
 
-        assignments_by_patient = {
-            assignment.get("patient_id"): assignment for assignment in self.assignments if assignment.get("patient_id")
-        }
+        assignments_by_patient = {a.get("patient_id"): a for a in self._current_assignments() if a.get("patient_id")}
         without_timely = 0
         for patient in self.patients:
+            if patient.get("status") == "delivered":
+                continue
             assignment = assignments_by_patient.get(patient.get("id"))
             if assignment is None:
                 without_timely += 1
@@ -201,12 +301,51 @@ class DashboardState(rx.State):
         return without_timely
 
     @rx.var(cache=True)
+    def patients_in_danger_alert_level(self) -> str:
+        count = self.patients_without_timely_response
+        if count >= 10:
+            return "critical"
+        if count >= 5:
+            return "warning"
+        return "normal"
+
+    @rx.var(cache=True)
     def occupied_beds_pct(self) -> str:
         total_beds = sum(hospital.get("bed_capacity") or 0 for hospital in self.hospitals)
         if total_beds == 0:
             return "0%"
         used_beds = sum(hospital.get("used_beds") or 0 for hospital in self.hospitals)
         return f"{(used_beds / total_beds) * 100:.1f}%"
+
+    @rx.var(cache=True)
+    def allocated_ambulance_alert_level(self) -> str:
+        total = len(self.ambulances)
+        if total == 0:
+            return "normal"
+        allocated_ambulance_ids = {
+            assignment.get("ambulance_id")
+            for assignment in self._current_assignments()
+            if assignment.get("ambulance_id")
+        }
+        ratio = len(allocated_ambulance_ids) / total
+        if ratio >= 0.9:
+            return "critical"
+        if ratio >= 0.8:
+            return "warning"
+        return "normal"
+
+    @rx.var(cache=True)
+    def occupied_beds_alert_level(self) -> str:
+        total_beds = sum(hospital.get("bed_capacity") or 0 for hospital in self.hospitals)
+        if total_beds == 0:
+            return "normal"
+        used_beds = sum(hospital.get("used_beds") or 0 for hospital in self.hospitals)
+        ratio = used_beds / total_beds
+        if ratio >= 0.9:
+            return "critical"
+        if ratio >= 0.8:
+            return "warning"
+        return "normal"
 
     @rx.var(cache=True)
     def assignments_count(self) -> int:
@@ -250,7 +389,7 @@ class DashboardState(rx.State):
     @rx.var(cache=True)
     def patients_with_colors(self) -> list[dict[str, Any]]:
         """Enrich active patients (not delivered) with color and assignment info."""
-        assignments_by_patient = {a.get("patient_id"): a for a in self.assignments if a.get("patient_id")}
+        assignments_by_patient = {a.get("patient_id"): a for a in self._current_assignments() if a.get("patient_id")}
         hospital_colors = self.hospital_colors or {}
         hospitals_by_id = {h.get("id"): h for h in self.hospitals if h.get("id")}
         result = []
@@ -268,20 +407,25 @@ class DashboardState(rx.State):
                     hosp = hospitals_by_id.get(hospital_id)
                     if hosp:
                         hospital_name = hosp.get("name") or ""
-            result.append({**patient, "color": color, "hospital_name": hospital_name})
+            badge_type = self._compute_badge_type(assignment) if assignment else "assigned"
+            result.append({**patient, "color": color, "hospital_name": hospital_name, "badge_type": badge_type})
         return result
 
     @rx.var(cache=True)
     def ambulances_with_colors(self) -> list[dict[str, Any]]:
         """Enrich ambulances with color, hospital name, patient info."""
-        assignments_by_ambulance = {a.get("ambulance_id"): a for a in self.assignments if a.get("ambulance_id")}
+        assignments_by_ambulance: dict[str, dict[str, Any]] = {}
+        for assgn in self._current_assignments():
+            amb_id = assgn.get("ambulance_id")
+            if amb_id and amb_id not in assignments_by_ambulance:
+                assignments_by_ambulance[amb_id] = assgn
         hospital_colors = self.hospital_colors or {}
         hospitals_by_id = {h.get("id"): h for h in self.hospitals if h.get("id")}
         patients_by_id = {p.get("id"): p for p in self.patients if p.get("id")}
         result = []
         for ambulance in self.ambulances:
-            ambulance_id = ambulance.get("id")
-            assignment = assignments_by_ambulance.get(ambulance_id)
+            ambulance_id: str = ambulance["id"]
+            assignment: dict[str, Any] | None = assignments_by_ambulance.get(ambulance_id)
             color = "#6b7280"  # gray default
             hospital_name = ""
             patient_name = ""

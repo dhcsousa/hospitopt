@@ -1,20 +1,36 @@
 {
+  "version": "0.2.0",
+  "compounds": [
+    {
+      "name": "Run: Full Stack",
+      "configurations": [
+        "HospitOPT API",
+        "Data Simulator",
+        "HospitOPTWorker",
+        "HospitOPT Demo Frontend"
+      ],
+      "stopAll": true
+    }
+  ],
   "configurations": [
     {
-      "name": "Worker",
+      "name": "HospitOPTWorker",
       "type": "debugpy",
       "request": "launch",
       "module": "hospitopt_worker.main",
+      "preLaunchTask": "Startup: Delay Worker",
       "cwd": "${workspaceFolder}",
       "envFile": "${workspaceFolder}/.env",
       "env": {
-        "PYTHONPATH": "${workspaceFolder}/src"
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "WORKER_CONFIG_FILE_PATH": "${workspaceFolder}/configs/worker.yaml"
       },
       "console": "integratedTerminal",
+      "consoleName": "HospitOPTWorker",
       "justMyCode": true
     },
     {
-      "name": "API (FastAPI)",
+      "name": "HospitOPT API",
       "type": "debugpy",
       "request": "launch",
       "module": "uvicorn",
@@ -29,24 +45,46 @@
       "cwd": "${workspaceFolder}",
       "envFile": "${workspaceFolder}/.env",
       "env": {
-        "PYTHONPATH": "${workspaceFolder}/src"
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "API_CONFIG_FILE_PATH": "${workspaceFolder}/configs/api.yaml"
       },
       "console": "integratedTerminal",
+      "consoleName": "HospitOPT API",
       "justMyCode": true
     },
     {
-      "name": "Frontend (Reflex module)",
+      "name": "HospitOPT Demo Frontend",
+      "type": "node-terminal",
+      "request": "launch",
+      "preLaunchTask": "Startup: Wait API",
+      "command": "set -a && source ${workspaceFolder}/.env && set +a && cd ${workspaceFolder}/frontend && ${workspaceFolder}/.venv/bin/python -m reflex run --frontend-port 3000 --backend-port 8004",
+    },
+    {
+      "name": "Data Simulator",
       "type": "debugpy",
       "request": "launch",
-      "module": "reflex",
+      "program": "${workspaceFolder}/scripts/fake_api.py",
+      "preLaunchTask": "Startup: Wait Frontend",
+      "cwd": "${workspaceFolder}",
       "args": [
-        "run"
+        "--api-url",
+        "http://localhost:8000",
+        "--port",
+        "8001",
+        "--tick",
+        "0.2",
+        "--speed",
+        "1.0",
+        "--ambulances",
+        "30",
+        "--incident-tick",
+        "10",
+        "--incident-patients",
+        "24"
       ],
-      "cwd": "${workspaceFolder}/frontend",
-      "env": {
-        "HOSPITOPT_API_URL": "http://localhost:8000"
-      },
+      "envFile": "${workspaceFolder}/.env",
       "console": "integratedTerminal",
+      "consoleName": "Data Simulator",
       "justMyCode": true
     }
   ]

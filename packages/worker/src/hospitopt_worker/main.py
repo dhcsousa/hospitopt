@@ -78,6 +78,12 @@ async def run_worker() -> None:
                         else:
                             eligible_patients = [p for p in patients if p.status == PatientStatus.WAITING]
 
+                        if not eligible_patients:
+                            logger.info("Skipping optimization because there are no eligible patients.")
+                            last_hash = current_hash
+                            await asyncio.sleep(config.poll_interval_seconds)
+                            continue
+
                         # Build locked assignments when hospital reassignment is
                         # disabled: in-transit patients keep their current hospital.
                         locked: list[LockedAssignment] = []

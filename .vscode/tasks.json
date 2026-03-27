@@ -1,0 +1,61 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Startup: Wait API",
+      "type": "shell",
+      "command": "until curl -sf http://localhost:8000/health > /dev/null; do sleep 1; done",
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared",
+        "clear": true,
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "Startup: Wait Frontend",
+      "type": "shell",
+      "dependsOn": [
+        "Startup: Wait API"
+      ],
+      "dependsOrder": "sequence",
+      "command": "until curl -sf http://localhost:8004/ping > /dev/null; do sleep 1; done",
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared",
+        "clear": true,
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "Startup: Wait Simulator",
+      "type": "shell",
+      "dependsOn": [
+        "Startup: Wait Frontend"
+      ],
+      "dependsOrder": "sequence",
+      "command": "until curl -sf http://localhost:8001/health > /dev/null; do sleep 1; done",
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared",
+        "clear": true,
+        "showReuseMessage": false
+      }
+    },
+    {
+      "label": "Startup: Delay Worker",
+      "type": "shell",
+      "dependsOn": [
+        "Startup: Wait Simulator"
+      ],
+      "dependsOrder": "sequence",
+      "command": "sleep 2",
+      "presentation": {
+        "reveal": "never",
+        "panel": "shared",
+        "clear": true,
+        "showReuseMessage": false
+      }
+    }
+  ]
+}

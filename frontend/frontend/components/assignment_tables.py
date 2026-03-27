@@ -59,14 +59,19 @@ def assignment_row(assignment: dict[str, object]) -> rx.Component:
         ),
         rx.el.td(
             rx.el.span(
-                rx.cond(
-                    assignment.get("requires_urgent_transport"),
-                    "Yes",
-                    "No",
+                rx.match(
+                    assignment.get("badge_type"),
+                    ("impossible", "Impossible"),
+                    ("unassigned", "Unassigned"),
+                    "Assigned",
                 ),
-                class_name=rx.cond(
-                    assignment.get("requires_urgent_transport"),
-                    "inline-flex rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700",
+                class_name=rx.match(
+                    assignment.get("badge_type"),
+                    ("impossible", "inline-flex rounded-full bg-rose-50 px-2 py-0.5 text-xs font-medium text-rose-700"),
+                    (
+                        "unassigned",
+                        "inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700",
+                    ),
                     "inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700",
                 ),
             ),

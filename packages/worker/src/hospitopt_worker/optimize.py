@@ -53,6 +53,15 @@ def optimize_allocation(
     patient_list = list(patients)
     ambulance_list = list(ambulances)
 
+    if not patient_list:
+        return OptimizationResult(
+            assignments=[],
+            unassigned_patient_ids=[],
+            max_lives_saved=0,
+            capacity_shortfall=0,
+            ambulance_shortfall=0,
+        )
+
     # Build lookup: patient_id -> required hospital_id from locked assignments
     locked_hospital: dict[UUID, UUID] = {la.patient_id: la.hospital_id for la in locked_assignments}
 
@@ -61,26 +70,29 @@ def optimize_allocation(
     ambulance_shortfall = max(0, len(patient_list) - len(ambulance_list))
 
     feasible: dict[tuple[PatientIndex, AmbulanceIndex, HospitalIndex], int] = {}
-    feasible_weights: dict[tuple[PatientIndex, AmbulanceIndex, HospitalIndex], float] = {}
-    # Weight per triple must satisfy (in priority order):
-    #   1. Saving one more patient always dominates everything (large base).
-    #   2. When choosing between patients for scarce resources, prefer urgent ones.
-    #   3. Among options for the same patient, prefer shorter travel (more slack).
-    # Route bonus is scaled tiny so it never overrides urgency.
+    feasible_weights: dict[tuple[PatientIndex, AmbulanceIndex, HospitalIndex], int] = {}
+    best_travel_by_patient_id: dict[UUID, int] = {}
+    # Integer weight per triple in strict priority order:
+    #   1. Save one more patient (dominates all lower-priority effects).
+    #   2. Prefer more urgent patients (lower time_to_hospital).
+    #   3. Prefer shorter travel (higher deadline slack).
+    #
+    # Using integer coefficients avoids tiny float tie-breakers that can look
+    # random and occasionally pick counter-intuitive longer routes.
     max_deadline = max(p.time_to_hospital_minutes for p in patient_list)
-    save_life_bonus = max_deadline + 1  # always bigger than any urgency value
-    route_scale = 1.0 / (max_deadline + 1) ** 2  # tiny, only breaks ties
+    min_deadline = min(p.time_to_hospital_minutes for p in patient_list)
+    max_urgency_score = max_deadline - min_deadline
+    urgency_bonus = max_deadline + 1  # 1 unit of urgency outranks any slack delta
+    assignment_bonus = (len(patient_list) + 1) * (urgency_bonus * max_urgency_score + max_deadline + 1)
 
     a_p_minutes = minutes_tables.ambulance_to_patient
     p_h_minutes = minutes_tables.patient_to_hospital
     for p_index, patient in enumerate(patient_list):
         required_h_id = locked_hospital.get(patient.id)
-        urgency = 1.0 / patient.time_to_hospital_minutes  # tiebreak: prefer urgent patients
+        urgency_score = max_deadline - patient.time_to_hospital_minutes
         for h_index, hospital in enumerate(hospital_list):
             if required_h_id is not None and hospital.id != required_h_id:
                 continue  # patient is locked to a different hospital
-            if hospital.bed_capacity <= hospital.used_beds:  # hospital already over maximum capacity
-                continue
             for a_index, ambulance in enumerate(ambulance_list):
                 ap = a_p_minutes.get((AmbulanceIndex(a_index), PatientIndex(p_index)))
                 ph = p_h_minutes.get((PatientIndex(p_index), HospitalIndex(h_index)))
@@ -88,13 +100,20 @@ def optimize_allocation(
                     continue
                 raw_travel_minutes = ap + ph
                 travel_minutes = round(raw_travel_minutes / speed_factor)
+
+                current_best = best_travel_by_patient_id.get(patient.id)
+                if current_best is None or travel_minutes < current_best:
+                    best_travel_by_patient_id[patient.id] = travel_minutes
+
+                if hospital.bed_capacity <= hospital.used_beds:  # hospital already over maximum capacity
+                    continue
                 if travel_minutes <= patient.time_to_hospital_minutes:
                     slack = patient.time_to_hospital_minutes - travel_minutes
                     if slack <= 0:
                         continue
                     feasible[(PatientIndex(p_index), AmbulanceIndex(a_index), HospitalIndex(h_index))] = travel_minutes
                     feasible_weights[(PatientIndex(p_index), AmbulanceIndex(a_index), HospitalIndex(h_index))] = (
-                        save_life_bonus + urgency + slack * route_scale
+                        assignment_bonus + urgency_score * urgency_bonus + slack
                     )
 
     if not feasible:
@@ -102,6 +121,10 @@ def optimize_allocation(
         urgent_assignments = [
             PatientAssignment(
                 patient_id=patient.id,
+                estimated_travel_minutes=best_travel_by_patient_id.get(patient.id),
+                deadline_slack_minutes=(patient.time_to_hospital_minutes - best_travel_by_patient_id[patient.id])
+                if patient.id in best_travel_by_patient_id
+                else None,
                 treatment_deadline_minutes=patient.time_to_hospital_minutes,
                 patient_registered_at=patient.registered_at,
                 requires_urgent_transport=True,
@@ -187,6 +210,13 @@ def optimize_allocation(
         assignments.extend(
             PatientAssignment(
                 patient_id=patient_id,
+                estimated_travel_minutes=best_travel_by_patient_id.get(patient_id),
+                deadline_slack_minutes=(
+                    next(patient.time_to_hospital_minutes for patient in patient_list if patient.id == patient_id)
+                    - best_travel_by_patient_id[patient_id]
+                )
+                if patient_id in best_travel_by_patient_id
+                else None,
                 treatment_deadline_minutes=next(
                     patient.time_to_hospital_minutes for patient in patient_list if patient.id == patient_id
                 ),

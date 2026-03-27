@@ -26,3 +26,6 @@ frontend:
 
 schemas:
     uv run python scripts/export_schemas.py
+
+fake-api api_key tick="0.2" speed="1" ambulances="30" incident_tick="10" incident_patients="24":
+    uv run python scripts/fake_api.py --api-url http://localhost:8000 --api-key {{ api_key }} --tick {{ tick }} --speed {{ speed }} --ambulances {{ ambulances }} --incident-tick {{ incident_tick }} --incident-patients {{ incident_patients }}

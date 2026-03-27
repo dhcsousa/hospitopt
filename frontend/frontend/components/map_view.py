@@ -6,7 +6,11 @@ from frontend.states.dashboard_state import DashboardState
 
 
 def _create_colored_div_icon(
-    color_var: Var, icon_type: str, size: tuple[int, int], is_carrying: Var | None = None
+    color_var: Var,
+    icon_type: str,
+    size: tuple[int, int],
+    is_carrying: Var | None = None,
+    badge_type_var: Var | None = None,
 ) -> Var:
     """Create a duck-typed Leaflet icon object in pure JS (no window.L dependency)."""
     anchor_x = size[0] // 2
@@ -15,12 +19,28 @@ def _create_colored_div_icon(
     if icon_type == "ambulance" and is_carrying is not None:
         # Dynamically switch emoji based on whether ambulance is carrying a patient
         emoji_expr = f"(({str(is_carrying)}) ? '🚑💨' : '🚑')"
+    elif icon_type == "patient" and badge_type_var is not None:
+        badge_js = str(badge_type_var)
+        emoji_expr = f"(({badge_js}) === 'impossible' ? '🆘' : '🤕')"
     else:
         icon_html_map = {
             "hospital": "🏥",
             "patient": "🤕",
         }
         emoji_expr = f"'{icon_html_map.get(icon_type, '📍')}'"
+
+    # Build the innerHTML line — impossible patients get a red glow instead of assigned-hospital color
+    if icon_type == "patient" and badge_type_var is not None:
+        badge_js = str(badge_type_var)
+        color_js = str(color_var)
+        icon_inner = f"""
+            var isImpossible = ({badge_js}) === 'impossible';
+            var bgColor = isImpossible ? '#dc2626' : (({color_js}) || '#6b7280');
+            var boxShadow = isImpossible ? '0 0 0 2px white, 0 0 0 4px #dc2626, 0 2px 8px rgba(220,38,38,0.5)' : '0 2px 4px rgba(0,0,0,0.3)';
+            div.innerHTML = `<div style="background-color: ${{bgColor}}; width: {size[0]}px; height: {size[1]}px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 2px solid white; box-shadow: ${{boxShadow}};">${{emoji}}</div>`;"""
+    else:
+        icon_inner = f"""
+            div.innerHTML = `<div style="background-color: ${{({str(color_var)}) || '#6b7280'}}; width: {size[0]}px; height: {size[1]}px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${{emoji}}</div>`;"""
 
     js_expr = f"""({{
         options: {{
@@ -32,8 +52,7 @@ def _create_colored_div_icon(
         }},
         createIcon: function(oldIcon) {{
             var div = (oldIcon && oldIcon.tagName === 'DIV') ? oldIcon : document.createElement('div');
-            var emoji = {emoji_expr};
-            div.innerHTML = `<div style="background-color: ${{({str(color_var)}) || '#6b7280'}}; width: {size[0]}px; height: {size[1]}px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${{emoji}}</div>`;
+            var emoji = {emoji_expr};{icon_inner}
             div.className = 'leaflet-marker-icon';
             div.style.width = '{size[0]}px';
             div.style.height = '{size[1]}px';
@@ -85,6 +104,14 @@ def map_view() -> rx.Component:
             lambda patient: rxe.map.marker(
                 rxe.map.popup(
                     rx.vstack(
+                        rx.match(
+                            patient.get("badge_type"),
+                            (
+                                "impossible",
+                                rx.badge("⚠️ IMPOSSIBLE — manual triage needed", color_scheme="red", variant="solid"),
+                            ),
+                            rx.fragment(),
+                        ),
                         rx.text(
                             rx.cond(patient.get("name"), patient.get("name"), "Patient"),
                             weight="bold",
@@ -131,7 +158,11 @@ def map_view() -> rx.Component:
                     )
                 ),
                 position=rxe.map.latlng(lat=patient["lat"], lng=patient["lon"]),
-                custom_attrs={"icon": _create_colored_div_icon(patient["color"], "patient", (40, 40))},
+                custom_attrs={
+                    "icon": _create_colored_div_icon(
+                        patient["color"], "patient", (40, 40), badge_type_var=patient["badge_type"]
+                    )
+                },
             ),
         ),
         rx.foreach(
